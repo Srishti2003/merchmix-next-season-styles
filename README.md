@@ -30,27 +30,28 @@ Full lineage per style: [`outputs/evidence/<code>/lineage.json`](outputs/evidenc
 
 Details: [`outputs/figures/eval_table.md`](outputs/figures/eval_table.md), [`movers.md`](outputs/figures/movers.md), [WRITEUP.md](WRITEUP.md).
 
-## Architecture
+## How it works
+
+One **orchestrator** agent runs four helper agents in order. Each helper can only use its own tools.
 
 ```mermaid
-flowchart LR
-  O{{Orchestrator<br/>Claude Agent SDK}} --> FC[forecaster] & AN[style analyst] & DE[designer] & CR[critic]
-  SK[/style-dna-brief skill/] --> AN
-  FC --> F["forecast MCP<br/>(LightGBM + SHAP)"]
-  FC --> R["retail MCP<br/>(DuckDB data)"]
-  AN --> R
-  DE --> I["image MCP"]
-  CR --> I
-  I --> GEN["FLUX.1 Kontext<br/>image edit"]
-  I --> CLIP["CLIP<br/>novelty check"]
+flowchart TD
+  A["1 · Forecaster<br/>which 3 styles will sell most?"] --> B["2 · Style analyst<br/>what to keep, what to change"]
+  B --> C["3 · Designer<br/>draw the new product"]
+  C --> D["4 · Critic<br/>is it new but still recognisable?"]
+  D -- "no: one retry" --> C
+  D -- yes --> E["Final board + evidence files"]
 ```
 
-- **Forecaster**: picks the top-3 (one per garment group, sold in the last 2 weeks), explains them with SHAP, writes `forecast.json`.
-- **Style analyst**: uses the `style-dna-brief` skill to write a KEEP/CHANGE brief and image prompt; a validator checks it.
-- **Designer**: edits the best-selling reference photo with FLUX.1 Kontext (reuses existing images to save GPU quota).
-- **Critic**: CLIP similarity to the style's own photos plus a visual check; approves or gives one revision note.
-- **Guard-rails in code**: tool whitelist per agent, writes only under `outputs/`, at most 4 new images and 1 revision
-  per run; every tool call is logged to [`outputs/runs/20260928-005623/trace.jsonl`](outputs/runs/20260928-005623/trace.jsonl).
+1. **Forecaster**: runs the LightGBM model on the sales data and picks the top 3 styles (one per garment group).
+2. **Style analyst**: writes a short brief for each one: what made it sell (KEEP) and what to change, plus an
+   image prompt. The rules for a good brief are a reusable **skill** (`style-dna-brief`).
+3. **Designer**: edits the product photo with an image model (FLUX.1 Kontext) to create the new concept.
+4. **Critic**: compares the new image with the original (CLIP similarity plus a visual check). It approves it or
+   sends one revision note back to the designer.
+
+The agents reach data and models through three **MCP servers** (`retail`, `forecast`, `image`). Every step is saved
+in `outputs/evidence/<code>/lineage.json`, and every tool call in [`trace.jsonl`](outputs/runs/20260928-005623/trace.jsonl).
 
 ## Seasonal bonus
 
