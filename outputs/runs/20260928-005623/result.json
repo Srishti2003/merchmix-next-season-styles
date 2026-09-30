@@ -1,0 +1,17 @@
+{
+  "run_id": "20260928-005623",
+  "cutoff": "2020-09-22",
+  "seconds": 427.9,
+  "turns": 5,
+  "is_error": false,
+  "cost_usd": 1.1237145999999998,
+  "tool_calls_by_agent": {
+    "orchestrator": 16,
+    "forecaster": 5,
+    "style_analyst": 15,
+    "designer": 7,
+    "critic": 16
+  },
+  "permission_denials": [],
+  "final_message": "Run complete. Summary:\n\n1. **Pluto RW slacks (0751471, Trousers)** — forecast 7,417 units — **Approved** (CLIP 0.68), houndstooth/camel-stripe/cropped-hem concept reused from prior generation.\n2. **Lucy blouse (0762846, Blouses)** — forecast 6,492 units — **Approved** (CLIP 0.69), burgundy satin balloon-sleeve concept newly generated.\n3. **RICHIE HOOD (0685814, Jersey Basic)** — forecast 5,486 units — concept 1 was \"too_close\" (CLIP 0.80); used this run's one allowed revision → concept 2 improved to CLIP 0.797 but still didn't fully land the silhouette change, so it ships as best-available, not approved.\n\nLineage written for all three; `run_summary.md` saved at `outputs/runs/20260928-005623/run_summary.md`. Board was not composed per COMPOSE_BOARD=no. No tool errors or quota refusals occurred."
+}

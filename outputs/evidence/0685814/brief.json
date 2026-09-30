@@ -1,0 +1,43 @@
+{
+  "product_code": "0685814",
+  "keep": [
+    {
+      "trait": "relaxed fit pullover hoodie silhouette",
+      "evidence": "detail_desc 'Relaxed fit'; product_type_name Hoodie; sells in 23 colourways, so the shape (not the colour) is what sells"
+    },
+    {
+      "trait": "lined, drawstring hood",
+      "evidence": "detail_desc 'lined, drawstring hood'; visible in reference photo 0685814001.jpg"
+    },
+    {
+      "trait": "kangaroo pocket with ribbing at cuffs and hem",
+      "evidence": "detail_desc 'kangaroo pocket and ribbing at the cuffs and hem'; visible in reference photo"
+    },
+    {
+      "trait": "brushed cotton-blend sweatshirt fabric",
+      "evidence": "detail_desc 'sweatshirt fabric made from a cotton blend ... Soft brushed inside'; #3 forecast rank, 5,485.6 units predicted over next 4 weeks"
+    }
+  ],
+  "change": [
+    {
+      "axis": "pattern",
+      "from": "solid black jersey",
+      "to": "brushed melange heather grey with a subtle tonal fleck texture"
+    },
+    {
+      "axis": "trim/closure",
+      "from": "flat kangaroo pocket with plain ribbed cuffs",
+      "to": "twin zip-entry pockets on the pouch and contrast-tipped ribbed cuffs"
+    },
+    {
+      "axis": "length/proportion",
+      "from": "regular hip-length hem with set-in sleeves",
+      "to": "cropped boxy length with dropped oversized shoulder seams"
+    }
+  ],
+  "rationale": "This hoodie sells at #3 forecast rank across 23 colourways, so the relaxed silhouette, lined drawstring hood, kangaroo pocket and brushed cotton fabric are the DNA to keep; a melange texture, zip-entry pocket detailing and a cropped boxy proportion give it a distinct new-season read while staying a hoodie.",
+  "prompt": "Redesign this garment (hoodie) as a new next-season product. Keep: relaxed fit pullover hoodie silhouette, lined, drawstring hood, kangaroo pocket with ribbing at cuffs and hem, brushed cotton-blend sweatshirt fabric. Change: brushed melange heather grey with a subtle tonal fleck texture, twin zip-entry pockets on the pouch and contrast-tipped ribbed cuffs, cropped boxy length with dropped oversized shoulder seams. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+  "negative_prompt": "logo, brand name, text, lettering, watermark, human model, mannequin, different garment category, copied print, busy background, extra garments",
+  "run_id": "20260928-005623",
+  "validated_at": "2026-09-27T19:28:19+00:00"
+}

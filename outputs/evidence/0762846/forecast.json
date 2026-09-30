@@ -1,0 +1,51 @@
+{
+  "product_code": "0762846",
+  "cutoff": "2020-09-23",
+  "horizon_weeks": 4,
+  "rank": 2,
+  "predicted_units_next_4w": 6492.3,
+  "units_last_4w": 6662,
+  "units_last_1w": 1705,
+  "naive_run_rate_units": 6820,
+  "growth_vs_last_4w": -0.025,
+  "shap_drivers": [
+    "units sold last week = 1,705 → lowers the forecast ×0.62 vs the last-week run-rate",
+    "last week vs 4-week average (momentum) = 1.02 → lowers the forecast ×0.64 vs the last-week run-rate",
+    "discount vs highest price seen = 1% → raises the forecast ×1.23 vs the last-week run-rate",
+    "units sold in the last 2 weeks = 3,560 → raises the forecast ×1.15 vs the last-week run-rate",
+    "units sold in the last 8 weeks = 9,258 → raises the forecast ×1.13 vs the last-week run-rate"
+  ],
+  "attributes": {
+    "prod_name": "Lucy blouse",
+    "product_type_name": "Shirt",
+    "product_group_name": "Garment Upper body",
+    "garment_group_name": "Blouses",
+    "index_group_name": "Ladieswear",
+    "section_name": "Womens Tailoring",
+    "colour_group_name": "White",
+    "graphical_appearance_name": "Solid",
+    "n_colours": 11,
+    "detail_desc": "Long-sleeved blouse in woven fabric with a collar, V-neck, buttons down the front, buttoned cuffs and a rounded hem."
+  },
+  "representative_articles": [
+    {
+      "article_id": 762846006,
+      "colour_group_name": "Black",
+      "units": 2292,
+      "image_path": "images/076/0762846006.jpg"
+    },
+    {
+      "article_id": 762846029,
+      "colour_group_name": "White",
+      "units": 1093,
+      "image_path": "images/076/0762846029.jpg"
+    },
+    {
+      "article_id": 762846031,
+      "colour_group_name": "Dark Green",
+      "units": 1942,
+      "image_path": "images/076/0762846031.jpg"
+    }
+  ],
+  "selection_rule": "top predicted units; max 1 per garment_group_name; sold in last 2 weeks (availability proxy — no stock data in the dataset)"
+}

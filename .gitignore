@@ -1,0 +1,24 @@
+# secrets and local environment
+.env
+kaggle.json
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# data (H&M / Kaggle): never committed
+data/
+raw/
+*.parquet
+*.csv.zip
+transactions_train.csv
+articles.csv
+customers.csv
+sample_submission.csv
+outputs/refs/
+outputs/cache/
+outputs/mock_run/
+
+# not part of the submission
+DEMO.md
+submission.zip

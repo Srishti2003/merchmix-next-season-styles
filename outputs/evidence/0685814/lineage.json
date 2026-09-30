@@ -1,0 +1,193 @@
+{
+  "run_id": "20260928-005623",
+  "cutoff": "2020-09-22",
+  "product_code": "0685814",
+  "written_at": "2026-09-29T10:01:16+00:00",
+  "forecast": {
+    "path": "outputs/evidence/0685814/forecast.json",
+    "rank": 3,
+    "predicted_units_next_4w": 5485.6,
+    "units_last_4w": 6108,
+    "shap_drivers": [
+      "units sold last week = 1,165 → lowers the forecast ×0.62 vs the last-week run-rate",
+      "last week vs 4-week average (momentum) = 0.76 → lowers the forecast ×0.75 vs the last-week run-rate",
+      "discount vs highest price seen = 1% → raises the forecast ×1.24 vs the last-week run-rate",
+      "units sold in the last 2 weeks = 2,726 → raises the forecast ×1.16 vs the last-week run-rate",
+      "units sold in the last 8 weeks = 8,465 → raises the forecast ×1.12 vs the last-week run-rate"
+    ],
+    "name": "RICHIE HOOD",
+    "product_type": "Hoodie"
+  },
+  "brief": {
+    "path": "outputs/evidence/0685814/brief.json",
+    "keep": [
+      {
+        "trait": "relaxed fit pullover hoodie silhouette",
+        "evidence": "detail_desc 'Relaxed fit'; product_type_name Hoodie; sells in 23 colourways, so the shape (not the colour) is what sells"
+      },
+      {
+        "trait": "lined, drawstring hood",
+        "evidence": "detail_desc 'lined, drawstring hood'; visible in reference photo 0685814001.jpg"
+      },
+      {
+        "trait": "kangaroo pocket with ribbing at cuffs and hem",
+        "evidence": "detail_desc 'kangaroo pocket and ribbing at the cuffs and hem'; visible in reference photo"
+      },
+      {
+        "trait": "brushed cotton-blend sweatshirt fabric",
+        "evidence": "detail_desc 'sweatshirt fabric made from a cotton blend ... Soft brushed inside'; #3 forecast rank, 5,485.6 units predicted over next 4 weeks"
+      }
+    ],
+    "change": [
+      {
+        "axis": "pattern",
+        "from": "solid black jersey",
+        "to": "brushed melange heather grey with a subtle tonal fleck texture"
+      },
+      {
+        "axis": "trim/closure",
+        "from": "flat kangaroo pocket with plain ribbed cuffs",
+        "to": "twin zip-entry pockets on the pouch and contrast-tipped ribbed cuffs"
+      },
+      {
+        "axis": "length/proportion",
+        "from": "regular hip-length hem with set-in sleeves",
+        "to": "cropped boxy length with dropped oversized shoulder seams"
+      }
+    ],
+    "rationale": "This hoodie sells at #3 forecast rank across 23 colourways, so the relaxed silhouette, lined drawstring hood, kangaroo pocket and brushed cotton fabric are the DNA to keep; a melange texture, zip-entry pocket detailing and a cropped boxy proportion give it a distinct new-season read while staying a hoodie."
+  },
+  "final_concept": {
+    "path": "outputs/evidence/0685814/concept_2.png",
+    "reference_image": "outputs/refs/0685814/0685814001.jpg",
+    "prompt": "Redesign this garment (hoodie) as a new next-season product with a clearly different silhouette. Keep: pullover hoodie with lined drawstring hood, kangaroo pocket with ribbing at cuffs and hem, brushed cotton-blend sweatshirt fabric. Change: brushed melange heather grey with a subtle tonal fleck texture, twin zip-entry pockets on the pouch and contrast-tipped ribbed cuffs, a dramatically shortened cropped boxy hem well above the hip, and heavily dropped oversized shoulder seams with wide batwing-style sleeves so the proportions look visibly different from a regular hip-length set-in-sleeve hoodie. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+    "prompt_matches_brief": false,
+    "model": "FLUX.1 Kontext [dev] — HF Space black-forest-labs/FLUX.1-Kontext-Dev",
+    "seed": 43,
+    "note": null,
+    "generated_in_this_run": true,
+    "critic_decision": "revise",
+    "scores": {
+      "product_code": "0685814",
+      "concept_path": "outputs/evidence/0685814/concept_2.png",
+      "max_sim_to_refs": 0.7969,
+      "sim_to_each_ref": {
+        "0685814001.jpg": 0.7969,
+        "0685814003.jpg": 0.7884,
+        "0685814033.jpg": 0.77
+      },
+      "max_sim_to_catalogue_sample": 0.5268,
+      "catalogue_sample_size": 6,
+      "verdict": "ok",
+      "thresholds": {
+        "too_close": 0.8,
+        "lost_dna": 0.6
+      }
+    }
+  },
+  "attempts": [
+    {
+      "concept": "outputs/evidence/0685814/concept_1.png",
+      "prompt": "Redesign this garment (hoodie) as a new next-season product. Keep: relaxed fit pullover hoodie silhouette, lined, drawstring hood, kangaroo pocket with ribbing at cuffs and hem, brushed cotton-blend sweatshirt fabric. Change: brushed melange heather grey with a subtle tonal fleck texture, twin zip-entry pockets on the pouch and contrast-tipped ribbed cuffs, cropped boxy length with dropped oversized shoulder seams. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+      "seed": 42,
+      "model": "FLUX.1 Kontext [dev] — HF Space black-forest-labs/FLUX.1-Kontext-Dev",
+      "run_id": "20260928-005623",
+      "generated_in_this_run": true,
+      "is_revision": false,
+      "critique": {
+        "decision": "revise",
+        "note": "Colourway, fleck texture and twin zip pockets with contrast cuffs read well, but the body/sleeve silhouette is barely differentiated from the reference (0.80 CLIP, at the too_close threshold) — shorten the hem to a visibly cropped, boxy length and exaggerate the dropped, oversized shoulder seam so the proportions clearly differ from the regular hip-length set-in-sleeve reference.",
+        "novelty": {
+          "product_code": "0685814",
+          "concept_path": "outputs/evidence/0685814/concept_1.png",
+          "max_sim_to_refs": 0.8002,
+          "sim_to_each_ref": {
+            "0685814001.jpg": 0.8002,
+            "0685814003.jpg": 0.7917,
+            "0685814033.jpg": 0.7429
+          },
+          "max_sim_to_catalogue_sample": 0.5218,
+          "catalogue_sample_size": 6,
+          "verdict": "too_close",
+          "thresholds": {
+            "too_close": 0.8,
+            "lost_dna": 0.6
+          }
+        }
+      }
+    },
+    {
+      "concept": "outputs/evidence/0685814/concept_2.png",
+      "prompt": "Redesign this garment (hoodie) as a new next-season product with a clearly different silhouette. Keep: pullover hoodie with lined drawstring hood, kangaroo pocket with ribbing at cuffs and hem, brushed cotton-blend sweatshirt fabric. Change: brushed melange heather grey with a subtle tonal fleck texture, twin zip-entry pockets on the pouch and contrast-tipped ribbed cuffs, a dramatically shortened cropped boxy hem well above the hip, and heavily dropped oversized shoulder seams with wide batwing-style sleeves so the proportions look visibly different from a regular hip-length set-in-sleeve hoodie. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+      "seed": 43,
+      "model": "FLUX.1 Kontext [dev] — HF Space black-forest-labs/FLUX.1-Kontext-Dev",
+      "run_id": "20260928-005623",
+      "generated_in_this_run": true,
+      "is_revision": true,
+      "critique": {
+        "decision": "revise",
+        "note": "CLIP now clears the too_close threshold by a hair (0.797 vs 0.80), but visually the hem still falls to standard hip-length and the shoulders/sleeves taper normally rather than showing the requested dramatic crop or batwing drop, so the silhouette differentiation the brief asked for did not clearly land; no further revision will be executed this run.",
+        "novelty": {
+          "product_code": "0685814",
+          "concept_path": "outputs/evidence/0685814/concept_2.png",
+          "max_sim_to_refs": 0.7969,
+          "sim_to_each_ref": {
+            "0685814001.jpg": 0.7969,
+            "0685814003.jpg": 0.7884,
+            "0685814033.jpg": 0.77
+          },
+          "max_sim_to_catalogue_sample": 0.5268,
+          "catalogue_sample_size": 6,
+          "verdict": "ok",
+          "thresholds": {
+            "too_close": 0.8,
+            "lost_dna": 0.6
+          }
+        }
+      }
+    },
+    {
+      "concept": "outputs/evidence/0685814/concept_3.png",
+      "prompt": "Change the garment's shape: cropped boxy hoodie ending at the waist, dropped shoulders, wider sleeves. Plain chest with no label, logo, patch or text. Keep the hood, zip pockets, grey fleck fabric and contrast-striped cuffs. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+      "seed": 42,
+      "model": "FLUX.1 Kontext [dev] — HF Space black-forest-labs/FLUX.1-Kontext-Dev",
+      "run_id": null,
+      "generated_in_this_run": false,
+      "is_revision": true,
+      "critique": {
+        "decision": "revise",
+        "note": "CLIP similarity 0.81 reads as a same-shape recolour, and visually the silhouette is still regular hip-length with set-in shoulders (not cropped/boxy/dropped) — make the hem clearly end at the waist with a boxy dropped-oversized-shoulder cut to differentiate it from the reference.",
+        "novelty": {
+          "max_sim_to_refs": 0.8124,
+          "sim_to_each_ref": {
+            "0685814001.jpg": 0.802,
+            "0685814003.jpg": 0.8124,
+            "0685814033.jpg": 0.7952
+          },
+          "max_sim_to_catalogue_sample": 0.5403,
+          "verdict": "too_close",
+          "thresholds": {
+            "too_close": 0.8,
+            "lost_dna": 0.6
+          }
+        }
+      },
+      "manual": true,
+      "forced": true,
+      "note": "Manual extra revision beyond the one-revision rule, approved by the user on 2026-09-28; edits concept_2 (the run's revision) with a shape-first prompt.",
+      "input_image": "outputs\\evidence\\0685814\\concept_2.png"
+    }
+  ],
+  "n_new_generations_this_run": 2,
+  "board_caption": {
+    "why_it_won": "Rank #3 of 20,318 styles scored (one per garment group): 5,486 units forecast for 23 Sep–20 Oct 2020 (6,108 in the last 4 weeks). Model: +18% vs the last-week × 4 run-rate of 4,660; top upward driver: still near full price, only 1% below its peak price (×1.24).",
+    "what_changed": "Heather-grey fabric; twin zip pockets on the pouch; contrast-tipped ribbed cuffs. Kept: drawstring hood and kangaroo pouch. Intended cropped, boxy shape was not achieved by the image model; critic did not approve. The small chest label is still visible.",
+    "status": "Critic: not approved",
+    "checked_against_image": true,
+    "brief_changes_not_visible": [
+      "cropped, boxy length",
+      "dropped oversized shoulder seams",
+      "subtle tonal fleck (reads as plain grey)"
+    ]
+  }
+}

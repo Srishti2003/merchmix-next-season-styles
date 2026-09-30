@@ -1,0 +1,159 @@
+{
+  "run_id": "20260928-005623",
+  "cutoff": "2020-09-22",
+  "product_code": "0751471",
+  "written_at": "2026-09-29T10:01:16+00:00",
+  "forecast": {
+    "path": "outputs/evidence/0751471/forecast.json",
+    "rank": 1,
+    "predicted_units_next_4w": 7417.3,
+    "units_last_4w": 9182,
+    "shap_drivers": [
+      "units sold last week = 1,711 → lowers the forecast ×0.62 vs the last-week run-rate",
+      "last week vs 4-week average (momentum) = 0.75 → lowers the forecast ×0.74 vs the last-week run-rate",
+      "discount vs highest price seen = 2% → raises the forecast ×1.21 vs the last-week run-rate",
+      "units sold in the last 2 weeks = 3,727 → raises the forecast ×1.16 vs the last-week run-rate",
+      "units sold in the last 8 weeks = 13,923 → raises the forecast ×1.12 vs the last-week run-rate"
+    ],
+    "name": "Pluto RW slacks (1)",
+    "product_type": "Trousers"
+  },
+  "brief": {
+    "path": "outputs/evidence/0751471/brief.json",
+    "keep": [
+      {
+        "trait": "slim tapered ankle-length cigarette leg",
+        "evidence": "detail_desc 'Ankle-length cigarette trousers ... tapered legs'; sold in 10 colourways (n_colours=10), so the shape (not colour) is what sells"
+      },
+      {
+        "trait": "regular waist with belt loops, zip fly and concealed elastication",
+        "evidence": "detail_desc 'zip fly, concealed hook-and-eye fastening, and regular waist with concealed elastication'; visible in reference photo 0751471001.jpg"
+      },
+      {
+        "trait": "front slant pockets, fake back pockets and a pressed centre crease",
+        "evidence": "detail_desc 'Side pockets, fake back pockets'; centre crease and front pockets visible in reference photo 0751471001.jpg"
+      },
+      {
+        "trait": "smooth stretch-weave tailored fabric in a solid colour",
+        "evidence": "detail_desc 'stretch weave'; graphical_appearance Solid; #1 forecast style with 7,417.3 units predicted for the next 4 weeks and 64,305 units sold to date"
+      }
+    ],
+    "change": [
+      {
+        "axis": "pattern",
+        "from": "solid black",
+        "to": "brushed wool-look houndstooth check in charcoal and camel"
+      },
+      {
+        "axis": "trim/closure",
+        "from": "plain side seam with hidden waistband loops",
+        "to": "a narrow camel contrast side stripe and exposed metal-tip belt loops"
+      },
+      {
+        "axis": "length/proportion",
+        "from": "closed ankle hem",
+        "to": "cropped hem with a small side split"
+      }
+    ],
+    "rationale": "Weekly sell-through climbed from 239 to a 1,855-unit peak across 10 colourways, showing customers buy this tapered, elasticated-waist cigarette shape regardless of colour, so the silhouette, waist construction and pockets stay; an autumn houndstooth check, a contrast side stripe and a split cropped hem give it a new-season identity at a glance."
+  },
+  "final_concept": {
+    "path": "outputs/evidence/0751471/concept_2.png",
+    "reference_image": "outputs/refs/0751471/0751471001.jpg",
+    "prompt": "Redesign this garment (trousers) as a new next-season product. Keep: slim tapered ankle-length cigarette leg, regular waist with belt loops, zip fly and concealed elastication, front slant pockets, fake back pockets and a pressed centre crease, smooth stretch-weave tailored fabric in a solid colour. Change: brushed wool-look houndstooth check in charcoal and camel, a narrow camel contrast side stripe and exposed metal-tip belt loops, cropped hem with a small side split. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+    "prompt_matches_brief": true,
+    "model": "FLUX.1 Kontext [dev] — HF Space black-forest-labs/FLUX.1-Kontext-Dev",
+    "seed": 42,
+    "note": "Regenerated from run 20260928-005623's validated brief (approved by the user on 2026-09-28) so Pluto's concept comes from this run's brief rather than the M6 hand-written prompt.",
+    "generated_in_this_run": false,
+    "critic_decision": "approve",
+    "scores": {
+      "max_sim_to_refs": 0.7263,
+      "sim_to_each_ref": {
+        "0751471001.jpg": 0.7243,
+        "0751471041.jpg": 0.7263,
+        "0751471042.jpg": 0.7027
+      },
+      "max_sim_to_catalogue_sample": 0.5133,
+      "verdict": "ok",
+      "thresholds": {
+        "too_close": 0.8,
+        "lost_dna": 0.6
+      }
+    }
+  },
+  "attempts": [
+    {
+      "concept": "outputs/evidence/0751471/concept_1.png",
+      "prompt": "Redesign this garment as a new next-season product. Keep: slim tapered ankle-length trouser silhouette, regular waist with belt loops, front slant pockets, pressed centre crease. Change: fabric to a brushed wool-look check in charcoal and camel, add a narrow satin side stripe, cropped split hem. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+      "seed": 42,
+      "model": "FLUX.1 Kontext [dev] — HF Space black-forest-labs/FLUX.1-Kontext-Dev",
+      "run_id": null,
+      "generated_in_this_run": false,
+      "is_revision": false,
+      "critique": {
+        "decision": "approve",
+        "note": "Keeps the tapered trouser silhouette, waistband/belt-loop and slanted-pocket construction while clearly reading as a new product via the charcoal/camel check, contrast side stripe, and cropped hem with visible side split.",
+        "novelty": {
+          "product_code": "0751471",
+          "concept_path": "outputs/evidence/0751471/concept_1.png",
+          "max_sim_to_refs": 0.6801,
+          "sim_to_each_ref": {
+            "0751471001.jpg": 0.675,
+            "0751471041.jpg": 0.6801,
+            "0751471042.jpg": 0.6706
+          },
+          "max_sim_to_catalogue_sample": 0.4855,
+          "catalogue_sample_size": 6,
+          "verdict": "ok",
+          "thresholds": {
+            "too_close": 0.8,
+            "lost_dna": 0.6
+          }
+        }
+      }
+    },
+    {
+      "concept": "outputs/evidence/0751471/concept_2.png",
+      "prompt": "Redesign this garment (trousers) as a new next-season product. Keep: slim tapered ankle-length cigarette leg, regular waist with belt loops, zip fly and concealed elastication, front slant pockets, fake back pockets and a pressed centre crease, smooth stretch-weave tailored fabric in a solid colour. Change: brushed wool-look houndstooth check in charcoal and camel, a narrow camel contrast side stripe and exposed metal-tip belt loops, cropped hem with a small side split. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+      "seed": 42,
+      "model": "FLUX.1 Kontext [dev] — HF Space black-forest-labs/FLUX.1-Kontext-Dev",
+      "run_id": null,
+      "generated_in_this_run": false,
+      "is_revision": true,
+      "critique": {
+        "decision": "approve",
+        "note": "Same slim tapered ankle-length trouser silhouette with visible centre crease, front pockets and waistband/belt loops (KEEP preserved); charcoal/camel houndstooth check and camel contrast side stripe clearly visible (CHANGE present); plain studio shot, no text/logo/model.",
+        "novelty": {
+          "max_sim_to_refs": 0.7263,
+          "sim_to_each_ref": {
+            "0751471001.jpg": 0.7243,
+            "0751471041.jpg": 0.7263,
+            "0751471042.jpg": 0.7027
+          },
+          "max_sim_to_catalogue_sample": 0.5133,
+          "verdict": "ok",
+          "thresholds": {
+            "too_close": 0.8,
+            "lost_dna": 0.6
+          }
+        }
+      },
+      "manual": true,
+      "forced": false,
+      "note": "Regenerated from run 20260928-005623's validated brief (approved by the user on 2026-09-28) so Pluto's concept comes from this run's brief rather than the M6 hand-written prompt.",
+      "input_image": "outputs/refs/0751471/0751471001.jpg"
+    }
+  ],
+  "n_new_generations_this_run": 0,
+  "board_caption": {
+    "why_it_won": "Rank #1 of 20,318 styles scored (one per garment group): 7,417 units forecast for 23 Sep–20 Oct 2020 (9,182 in the last 4 weeks). Model: +8% vs the last-week × 4 run-rate of 6,844; top upward driver: still near full price, only 2% below its peak price (×1.21).",
+    "what_changed": "Charcoal-and-camel glen-check wool-look fabric; camel contrast side stripe down each leg. Kept: slim tapered ankle-length leg, belt-loop waistband, slant pockets and pressed centre crease.",
+    "status": "Critic: approved",
+    "checked_against_image": true,
+    "brief_changes_not_visible": [
+      "cropped hem with a small side split (still reads as ankle length)",
+      "exposed metal-tip belt loops"
+    ]
+  }
+}

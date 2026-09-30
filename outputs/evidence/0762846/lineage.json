@@ -1,0 +1,130 @@
+{
+  "run_id": "20260928-005623",
+  "cutoff": "2020-09-22",
+  "product_code": "0762846",
+  "written_at": "2026-09-29T10:01:16+00:00",
+  "forecast": {
+    "path": "outputs/evidence/0762846/forecast.json",
+    "rank": 2,
+    "predicted_units_next_4w": 6492.3,
+    "units_last_4w": 6662,
+    "shap_drivers": [
+      "units sold last week = 1,705 → lowers the forecast ×0.62 vs the last-week run-rate",
+      "last week vs 4-week average (momentum) = 1.02 → lowers the forecast ×0.64 vs the last-week run-rate",
+      "discount vs highest price seen = 1% → raises the forecast ×1.23 vs the last-week run-rate",
+      "units sold in the last 2 weeks = 3,560 → raises the forecast ×1.15 vs the last-week run-rate",
+      "units sold in the last 8 weeks = 9,258 → raises the forecast ×1.13 vs the last-week run-rate"
+    ],
+    "name": "Lucy blouse",
+    "product_type": "Shirt"
+  },
+  "brief": {
+    "path": "outputs/evidence/0762846/brief.json",
+    "keep": [
+      {
+        "trait": "long-sleeved woven blouse with a shirt collar and open V-neck",
+        "evidence": "detail_desc 'Long-sleeved blouse in woven fabric with a collar, V-neck'; product_type Shirt / garment group Blouses; visible in reference photo 0762846006.jpg"
+      },
+      {
+        "trait": "button-front placket and buttoned cuffs",
+        "evidence": "detail_desc 'buttons down the front, buttoned cuffs'; visible in reference photo 0762846006.jpg"
+      },
+      {
+        "trait": "relaxed straight body with a rounded hem",
+        "evidence": "detail_desc 'rounded hem'; visible in reference photo 0762846006.jpg"
+      },
+      {
+        "trait": "solid, single-colour base",
+        "evidence": "graphical_appearance_name 'Solid'; sold in 11 colourways (n_colours=11) with 43,248 units total, so the shape carries the style, not the colour"
+      }
+    ],
+    "change": [
+      {
+        "axis": "silhouette detail",
+        "from": "straight sleeve",
+        "to": "voluminous balloon sleeves gathered into deep three-button cuffs"
+      },
+      {
+        "axis": "fabric/texture",
+        "from": "matte woven fabric",
+        "to": "fluid satin with a soft sheen"
+      },
+      {
+        "axis": "colourway",
+        "from": "black",
+        "to": "deep burgundy"
+      }
+    ],
+    "rationale": "The collar-and-V blouse sells across 11 colourways with strong repeat purchase (~1.4 units per buyer over the last 4 weeks) and rising weekly units (412 to a 1,855 peak in early September), so its shape and construction stay; balloon sleeves and satin move it from office basic to an autumn statement piece, and burgundy is on-season."
+  },
+  "final_concept": {
+    "path": "outputs/evidence/0762846/concept_1.png",
+    "reference_image": "outputs/refs/0762846/0762846006.jpg",
+    "prompt": "Redesign this garment (shirt) as a new next-season product. Keep: long-sleeved woven blouse with a shirt collar and open V-neck, button-front placket and buttoned cuffs, relaxed straight body with a rounded hem, solid, single-colour base. Change: voluminous balloon sleeves gathered into deep three-button cuffs, fluid satin with a soft sheen, deep burgundy. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+    "prompt_matches_brief": true,
+    "model": "FLUX.1 Kontext [dev] — HF Space black-forest-labs/FLUX.1-Kontext-Dev",
+    "seed": 42,
+    "note": null,
+    "generated_in_this_run": true,
+    "critic_decision": "approve",
+    "scores": {
+      "product_code": "0762846",
+      "concept_path": "outputs/evidence/0762846/concept_1.png",
+      "max_sim_to_refs": 0.6903,
+      "sim_to_each_ref": {
+        "0762846006.jpg": 0.685,
+        "0762846029.jpg": 0.6402,
+        "0762846031.jpg": 0.6903
+      },
+      "max_sim_to_catalogue_sample": 0.4963,
+      "catalogue_sample_size": 6,
+      "verdict": "ok",
+      "thresholds": {
+        "too_close": 0.8,
+        "lost_dna": 0.6
+      }
+    }
+  },
+  "attempts": [
+    {
+      "concept": "outputs/evidence/0762846/concept_1.png",
+      "prompt": "Redesign this garment (shirt) as a new next-season product. Keep: long-sleeved woven blouse with a shirt collar and open V-neck, button-front placket and buttoned cuffs, relaxed straight body with a rounded hem, solid, single-colour base. Change: voluminous balloon sleeves gathered into deep three-button cuffs, fluid satin with a soft sheen, deep burgundy. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+      "seed": 42,
+      "model": "FLUX.1 Kontext [dev] — HF Space black-forest-labs/FLUX.1-Kontext-Dev",
+      "run_id": "20260928-005623",
+      "generated_in_this_run": true,
+      "is_revision": false,
+      "critique": {
+        "decision": "approve",
+        "note": "Same collar/V-neck placket/button-front/rounded-hem silhouette preserved, with clearly new deep burgundy colourway, glossy satin sheen, and visibly fuller gathered sleeve reflecting the brief's CHANGE items.",
+        "novelty": {
+          "product_code": "0762846",
+          "concept_path": "outputs/evidence/0762846/concept_1.png",
+          "max_sim_to_refs": 0.6903,
+          "sim_to_each_ref": {
+            "0762846006.jpg": 0.685,
+            "0762846029.jpg": 0.6402,
+            "0762846031.jpg": 0.6903
+          },
+          "max_sim_to_catalogue_sample": 0.4963,
+          "catalogue_sample_size": 6,
+          "verdict": "ok",
+          "thresholds": {
+            "too_close": 0.8,
+            "lost_dna": 0.6
+          }
+        }
+      }
+    }
+  ],
+  "n_new_generations_this_run": 1,
+  "board_caption": {
+    "why_it_won": "Rank #2 of 20,318 styles scored (one per garment group): 6,492 units forecast for 23 Sep–20 Oct 2020 (6,662 in the last 4 weeks). Model: -5% vs the last-week × 4 run-rate of 6,820; top upward driver: still near full price, only 1% below its peak price (×1.23).",
+    "what_changed": "Deep burgundy satin with a soft sheen; fuller sleeves gathered into deep buttoned cuffs. Kept: shirt collar, open V-neck, button front and rounded hem.",
+    "status": "Critic: approved",
+    "checked_against_image": true,
+    "brief_changes_not_visible": [
+      "three-button cuffs (each cuff shows one button)"
+    ]
+  }
+}

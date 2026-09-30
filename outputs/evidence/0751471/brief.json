@@ -1,0 +1,43 @@
+{
+  "product_code": "0751471",
+  "keep": [
+    {
+      "trait": "slim tapered ankle-length cigarette leg",
+      "evidence": "detail_desc 'Ankle-length cigarette trousers ... tapered legs'; sold in 10 colourways (n_colours=10), so the shape (not colour) is what sells"
+    },
+    {
+      "trait": "regular waist with belt loops, zip fly and concealed elastication",
+      "evidence": "detail_desc 'zip fly, concealed hook-and-eye fastening, and regular waist with concealed elastication'; visible in reference photo 0751471001.jpg"
+    },
+    {
+      "trait": "front slant pockets, fake back pockets and a pressed centre crease",
+      "evidence": "detail_desc 'Side pockets, fake back pockets'; centre crease and front pockets visible in reference photo 0751471001.jpg"
+    },
+    {
+      "trait": "smooth stretch-weave tailored fabric in a solid colour",
+      "evidence": "detail_desc 'stretch weave'; graphical_appearance Solid; #1 forecast style with 7,417.3 units predicted for the next 4 weeks and 64,305 units sold to date"
+    }
+  ],
+  "change": [
+    {
+      "axis": "pattern",
+      "from": "solid black",
+      "to": "brushed wool-look houndstooth check in charcoal and camel"
+    },
+    {
+      "axis": "trim/closure",
+      "from": "plain side seam with hidden waistband loops",
+      "to": "a narrow camel contrast side stripe and exposed metal-tip belt loops"
+    },
+    {
+      "axis": "length/proportion",
+      "from": "closed ankle hem",
+      "to": "cropped hem with a small side split"
+    }
+  ],
+  "rationale": "Weekly sell-through climbed from 239 to a 1,855-unit peak across 10 colourways, showing customers buy this tapered, elasticated-waist cigarette shape regardless of colour, so the silhouette, waist construction and pockets stay; an autumn houndstooth check, a contrast side stripe and a split cropped hem give it a new-season identity at a glance.",
+  "prompt": "Redesign this garment (trousers) as a new next-season product. Keep: slim tapered ankle-length cigarette leg, regular waist with belt loops, zip fly and concealed elastication, front slant pockets, fake back pockets and a pressed centre crease, smooth stretch-weave tailored fabric in a solid colour. Change: brushed wool-look houndstooth check in charcoal and camel, a narrow camel contrast side stripe and exposed metal-tip belt loops, cropped hem with a small side split. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+  "negative_prompt": "logo, brand name, text, lettering, watermark, human model, mannequin, different garment category, copied print, busy background, extra garments",
+  "run_id": "20260928-005623",
+  "validated_at": "2026-09-27T19:28:07+00:00"
+}

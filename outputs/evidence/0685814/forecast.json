@@ -1,0 +1,51 @@
+{
+  "product_code": "0685814",
+  "cutoff": "2020-09-23",
+  "horizon_weeks": 4,
+  "rank": 3,
+  "predicted_units_next_4w": 5485.6,
+  "units_last_4w": 6108,
+  "units_last_1w": 1165,
+  "naive_run_rate_units": 4660,
+  "growth_vs_last_4w": -0.102,
+  "shap_drivers": [
+    "units sold last week = 1,165 → lowers the forecast ×0.62 vs the last-week run-rate",
+    "last week vs 4-week average (momentum) = 0.76 → lowers the forecast ×0.75 vs the last-week run-rate",
+    "discount vs highest price seen = 1% → raises the forecast ×1.24 vs the last-week run-rate",
+    "units sold in the last 2 weeks = 2,726 → raises the forecast ×1.16 vs the last-week run-rate",
+    "units sold in the last 8 weeks = 8,465 → raises the forecast ×1.12 vs the last-week run-rate"
+  ],
+  "attributes": {
+    "prod_name": "RICHIE HOOD",
+    "product_type_name": "Hoodie",
+    "product_group_name": "Garment Upper body",
+    "garment_group_name": "Jersey Basic",
+    "index_group_name": "Menswear",
+    "section_name": "Men Underwear",
+    "colour_group_name": "Dark Blue",
+    "graphical_appearance_name": "Solid",
+    "n_colours": 23,
+    "detail_desc": "Hoodie in sweatshirt fabric made from a cotton blend. Relaxed fit with a lined, drawstring hood, long sleeves, kangaroo pocket and ribbing at the cuffs and hem. Soft brushed inside."
+  },
+  "representative_articles": [
+    {
+      "article_id": 685814001,
+      "colour_group_name": "Black",
+      "units": 1822,
+      "image_path": "images/068/0685814001.jpg"
+    },
+    {
+      "article_id": 685814003,
+      "colour_group_name": "White",
+      "units": 1589,
+      "image_path": "images/068/0685814003.jpg"
+    },
+    {
+      "article_id": 685814033,
+      "colour_group_name": "Light Pink",
+      "units": 1113,
+      "image_path": "images/068/0685814033.jpg"
+    }
+  ],
+  "selection_rule": "top predicted units; max 1 per garment_group_name; sold in last 2 weeks (availability proxy — no stock data in the dataset)"
+}

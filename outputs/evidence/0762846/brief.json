@@ -1,0 +1,43 @@
+{
+  "product_code": "0762846",
+  "keep": [
+    {
+      "trait": "long-sleeved woven blouse with a shirt collar and open V-neck",
+      "evidence": "detail_desc 'Long-sleeved blouse in woven fabric with a collar, V-neck'; product_type Shirt / garment group Blouses; visible in reference photo 0762846006.jpg"
+    },
+    {
+      "trait": "button-front placket and buttoned cuffs",
+      "evidence": "detail_desc 'buttons down the front, buttoned cuffs'; visible in reference photo 0762846006.jpg"
+    },
+    {
+      "trait": "relaxed straight body with a rounded hem",
+      "evidence": "detail_desc 'rounded hem'; visible in reference photo 0762846006.jpg"
+    },
+    {
+      "trait": "solid, single-colour base",
+      "evidence": "graphical_appearance_name 'Solid'; sold in 11 colourways (n_colours=11) with 43,248 units total, so the shape carries the style, not the colour"
+    }
+  ],
+  "change": [
+    {
+      "axis": "silhouette detail",
+      "from": "straight sleeve",
+      "to": "voluminous balloon sleeves gathered into deep three-button cuffs"
+    },
+    {
+      "axis": "fabric/texture",
+      "from": "matte woven fabric",
+      "to": "fluid satin with a soft sheen"
+    },
+    {
+      "axis": "colourway",
+      "from": "black",
+      "to": "deep burgundy"
+    }
+  ],
+  "rationale": "The collar-and-V blouse sells across 11 colourways with strong repeat purchase (~1.4 units per buyer over the last 4 weeks) and rising weekly units (412 to a 1,855 peak in early September), so its shape and construction stay; balloon sleeves and satin move it from office basic to an autumn statement piece, and burgundy is on-season.",
+  "prompt": "Redesign this garment (shirt) as a new next-season product. Keep: long-sleeved woven blouse with a shirt collar and open V-neck, button-front placket and buttoned cuffs, relaxed straight body with a rounded hem, solid, single-colour base. Change: voluminous balloon sleeves gathered into deep three-button cuffs, fluid satin with a soft sheen, deep burgundy. Studio product photo, plain light-grey background, same camera angle, no model, no text.",
+  "negative_prompt": "logo, brand name, text, lettering, watermark, human model, mannequin, different garment category, copied print, busy background, extra garments",
+  "run_id": "20260928-005623",
+  "validated_at": "2026-09-27T19:28:06+00:00"
+}

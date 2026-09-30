@@ -1,0 +1,24 @@
+{
+  "_about": "Board captions checked by eye against each FINAL concept image (2026-09-29). They list only changes visible in the image; brief CHANGE items that the image model did not render are listed under not_visible and recorded in lineage.json.",
+  "0751471": {
+    "concept": "concept_2.png",
+    "what_changed": "Charcoal-and-camel glen-check wool-look fabric; camel contrast side stripe down each leg.",
+    "kept": "slim tapered ankle-length leg, belt-loop waistband, slant pockets and pressed centre crease",
+    "not_visible": ["cropped hem with a small side split (still reads as ankle length)", "exposed metal-tip belt loops"],
+    "extra_note": ""
+  },
+  "0762846": {
+    "concept": "concept_1.png",
+    "what_changed": "Deep burgundy satin with a soft sheen; fuller sleeves gathered into deep buttoned cuffs.",
+    "kept": "shirt collar, open V-neck, button front and rounded hem",
+    "not_visible": ["three-button cuffs (each cuff shows one button)"],
+    "extra_note": ""
+  },
+  "0685814": {
+    "concept": "concept_2.png",
+    "what_changed": "Heather-grey fabric; twin zip pockets on the pouch; contrast-tipped ribbed cuffs.",
+    "kept": "drawstring hood and kangaroo pouch",
+    "not_visible": ["cropped, boxy length", "dropped oversized shoulder seams", "subtle tonal fleck (reads as plain grey)"],
+    "extra_note": "Intended cropped, boxy shape was not achieved by the image model; critic did not approve. The small chest label is still visible."
+  }
+}

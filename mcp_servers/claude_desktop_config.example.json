@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "retail": {
+      "command": "C:\\path\\to\\merchmix-hm\\.venv\\Scripts\\python.exe",
+      "args": ["C:\\path\\to\\merchmix-hm\\mcp_servers\\retail_data.py"],
+      "env": {"PYTHONIOENCODING": "utf-8"}
+    },
+    "forecast": {
+      "command": "C:\\path\\to\\merchmix-hm\\.venv\\Scripts\\python.exe",
+      "args": ["C:\\path\\to\\merchmix-hm\\mcp_servers\\forecast.py"],
+      "env": {"PYTHONIOENCODING": "utf-8"}
+    }
+  }
+}

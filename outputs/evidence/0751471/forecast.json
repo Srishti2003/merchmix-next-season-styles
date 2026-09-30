@@ -1,0 +1,51 @@
+{
+  "product_code": "0751471",
+  "cutoff": "2020-09-23",
+  "horizon_weeks": 4,
+  "rank": 1,
+  "predicted_units_next_4w": 7417.3,
+  "units_last_4w": 9182,
+  "units_last_1w": 1711,
+  "naive_run_rate_units": 6844,
+  "growth_vs_last_4w": -0.192,
+  "shap_drivers": [
+    "units sold last week = 1,711 → lowers the forecast ×0.62 vs the last-week run-rate",
+    "last week vs 4-week average (momentum) = 0.75 → lowers the forecast ×0.74 vs the last-week run-rate",
+    "discount vs highest price seen = 2% → raises the forecast ×1.21 vs the last-week run-rate",
+    "units sold in the last 2 weeks = 3,727 → raises the forecast ×1.16 vs the last-week run-rate",
+    "units sold in the last 8 weeks = 13,923 → raises the forecast ×1.12 vs the last-week run-rate"
+  ],
+  "attributes": {
+    "prod_name": "Pluto RW slacks (1)",
+    "product_type_name": "Trousers",
+    "product_group_name": "Garment Lower body",
+    "garment_group_name": "Trousers",
+    "index_group_name": "Ladieswear",
+    "section_name": "Womens Everyday Collection",
+    "colour_group_name": "Black",
+    "graphical_appearance_name": "Solid",
+    "n_colours": 10,
+    "detail_desc": "Ankle-length cigarette trousers in a stretch weave with a zip fly, concealed hook-and-eye fastening, and regular waist with concealed elastication. Side pockets, fake back pockets and tapered legs."
+  },
+  "representative_articles": [
+    {
+      "article_id": 751471001,
+      "colour_group_name": "Black",
+      "units": 5673,
+      "image_path": "images/075/0751471001.jpg"
+    },
+    {
+      "article_id": 751471042,
+      "colour_group_name": "Dark Blue",
+      "units": 987,
+      "image_path": "images/075/0751471042.jpg"
+    },
+    {
+      "article_id": 751471041,
+      "colour_group_name": "Beige",
+      "units": 1069,
+      "image_path": "images/075/0751471041.jpg"
+    }
+  ],
+  "selection_rule": "top predicted units; max 1 per garment_group_name; sold in last 2 weeks (availability proxy — no stock data in the dataset)"
+}
