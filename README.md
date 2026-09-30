@@ -4,7 +4,10 @@ Forecast next-season winning styles from H&M transactions, then generate new pro
 
 ![Final board: 3 forecast winners and their new concepts](outputs/final_board.png)
 
-Per-winner evidence (sales curve, SHAP drivers, reference → concept, KEEP/CHANGE): [`outputs/evidence_sheet.png`](outputs/evidence_sheet.png)
+**Evidence per winner:** sales curve, top SHAP drivers, reference → concept with critic verdict, KEEP/CHANGE,
+and the backtest summary ([`outputs/evidence_sheet.png`](outputs/evidence_sheet.png)).
+
+![Evidence sheet: from forecast to concept for each winner](outputs/evidence_sheet.png)
 
 ## Results
 
