@@ -112,5 +112,5 @@ outputs/            board, evidence sheet, per-style evidence, figures, models, 
 - **Hoodie shape not achieved.** The image model changed fabric, colour and trims but not the garment's proportions.
 - **CLIP is weak on colour.** Colourways of the same style score 0.80–0.94, so the critic also checks images visually.
 
-More in [WRITEUP.md](WRITEUP.md): approach, why 4 weeks, full results, lineage, limitations, issues hit.
+More in [WRITEUP.md](WRITEUP.md) (also as [PDF](WRITEUP.pdf)): approach, why 4 weeks, full results, lineage, limitations, issues hit.
 Evidence: [`outputs/evidence/`](outputs/evidence/) · agent run: [`outputs/runs/20260928-005623/`](outputs/runs/20260928-005623/).
