@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 
 import config
-from forecasting import select
+from data_science import select
 
 CLIP_MODEL, CLIP_PRETRAINED = "ViT-B-32", "laion2b_s34b_b79k"
 TOO_CLOSE, LOST_DNA = 0.80, 0.60  # see module docstring for the calibration

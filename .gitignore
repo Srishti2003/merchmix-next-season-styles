@@ -22,3 +22,14 @@ outputs/mock_run/
 # not part of the submission
 DEMO.md
 submission.zip
+
+# confidential assignment brief: never commit
+*Assignment*.pdf
+
+# local hand-off notes for the codespace session: never commit
+HANDOFF.md
+PROMPT.md
+WRITEUP.render.html
+
+# Local copies of the final deliverables for download
+submission/

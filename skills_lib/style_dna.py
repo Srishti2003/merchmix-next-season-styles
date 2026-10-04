@@ -40,7 +40,7 @@ BRIEF_SCHEMA: dict = {
 
 
 def load_forecast(path: str | Path) -> dict:
-    """Read a forecast.json written by forecasting.select."""
+    """Read a forecast.json written by data_science.select."""
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 

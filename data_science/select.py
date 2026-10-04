@@ -3,7 +3,7 @@
 Pipeline for a prediction cutoff ``c`` (a Wednesday; FINAL_CUTOFF = 2020-09-23 = day after the data):
 1. Retrain the regressor on every weekly cutoff whose 4-week target is fully observed before ``c``
    (for FINAL_CUTOFF: 2019-09-25 .. 2020-08-26, target ending 2020-09-22), using the number of
-   boosting rounds chosen by early stopping in forecasting.model.
+   boosting rounds chosen by early stopping in data_science.model.
 2. Predict next-4-week units for every style active in the 12 weeks before ``c``.
 3. select_top_k: highest predicted units, at most one style per garment group, and the style must
    have sold in the last 2 weeks. That last rule is our ONLY availability signal: the dataset has no
@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from forecasting import data, features, model
+from data_science import data, features, model
 
 KAGGLE_COMP = "h-and-m-personalized-fashion-recommendations"
 ATTR_COLS = ["prod_name", "product_type_name", "product_group_name", "garment_group_name",
@@ -55,7 +55,7 @@ def normalize_cutoff(d: date | str) -> date:
 
 
 def get_booster(cutoff: date, refresh: bool = False) -> lgb.Booster:
-    """Final model for ``cutoff``, cached at outputs/models/lgbm_final_<YYYYMMDD>.txt."""
+    """Final model for ``cutoff``, cached at models/lgbm_final_<YYYYMMDD>.txt."""
     path = config.MODELS_DIR / f"lgbm_final_{cutoff:%Y%m%d}.txt"
     if path.exists() and not refresh:
         return lgb.Booster(model_file=str(path))
@@ -115,7 +115,7 @@ def plot_sales_curve(code: str, cutoff: date, pred_units: float, path: Path, wee
     """Weekly units for the last ``weeks`` weeks plus the forecast weekly run-rate."""
     import matplotlib.pyplot as plt
 
-    from forecasting import viz
+    from data_science import viz
 
     viz.apply_style()
     sc = data.sales_curve(code, weeks=weeks, end=cutoff)
@@ -262,7 +262,6 @@ def main() -> None:
         print(f"{name}: {len(preds):,} styles scored at {c}")
     winners = select_top_k(preds)
     recs = write_evidence(winners, config.FINAL_CUTOFF, snap, booster)
-    preds.head(50).to_csv(config.OUT_DIR / "predictions_top50.csv", index=False)
 
     print("\nTop-3 (diversified by garment group):")
     for r in recs:

@@ -1,0 +1,9 @@
+# Dev-only tools, on top of requirements.txt (not needed to run the app, API, tests or train/predict).
+# After installing: python -m playwright install chromium
+-r requirements.txt
+playwright        # scripts/screenshots.py, scripts/build_writeup_pdf.py
+markdown          # scripts/build_writeup_pdf.py
+pymupdf           # checking WRITEUP.pdf pages and images
+nbformat          # data_science/notebooks/build_02_eda_extended.py
+nbclient
+ipykernel

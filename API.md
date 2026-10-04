@@ -1,0 +1,238 @@
+# API
+
+FastAPI service over the offline prediction files written by `python -m data_science.predict` and
+`python -m data_science.summary`. Two seasons:
+
+- **AW2020** (default): the forecast. Cutoff 2020-09-23, window 2020-09-23 → 2020-10-20 (`outputs/predictions.json`).
+- **SS2020**: a backtest season. Cutoff 2020-05-27, window 2020-05-27 → 2020-06-23 (`outputs/predictions_SS2020.json`).
+  The window is in the data, so actual units are included. It uses the published summer regressor and the
+  out-of-fold classifier predictions at that cutoff (no information from the window). It has no concepts.
+
+Each season has the 200 styles with the highest forecast units; the selected top 3 come first.
+
+```bash
+uvicorn backend.api:app --host 0.0.0.0 --port 8000
+```
+
+Interactive docs with schemas and example responses: `http://localhost:8000/docs` (OpenAPI: `/openapi.json`).
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | status, model version, prediction cutoff, number of styles, seasons |
+| GET | `/seasons` | available seasons (AW2020 default, SS2020 backtest) |
+| GET | `/styles/top?limit=10&offset=0&season=AW2020` | ranked list (top 3 first, then by forecast units) |
+| GET | `/styles/{style_id}?season=AW2020` | one style: product info, scores, explanation, 26-week history, concept (AW2020 top 3), actuals (SS2020) |
+| GET | `/model/summary` | regressor and classifiers vs baselines, calibration, success definition, horizon, stock caveat, category-mix shift |
+| GET | `/images/{path}` | images from `outputs/`: `refs/…`, `evidence/…`, `classifier/…`, `generated_concepts.png` |
+
+`season` is optional on the style endpoints (default `AW2020`, case-insensitive); an unknown season → **404**
+`{"detail": "Unknown season 'AW2099'. Available: AW2020, SS2020.", "season": "AW2099"}`.
+
+Code layout: `backend/api.py` (HTTP only), `backend/model_service.py` (loads the predictions once, no FastAPI
+imports), `backend/schemas.py` (Pydantic response models). CORS allows `http://localhost:8501` (Streamlit).
+
+## Scores
+
+| field | meaning |
+|---|---|
+| `rank` | 1–3 for the selected winners (highest forecast units, one per garment group, sold in the last 2 weeks); `null` otherwise |
+| `forecast_rank` | position by forecast units among all 20,318 scored styles |
+| `forecast_units` | regressor forecast of units sold in the forecast window |
+| `prediction_score` | calibrated probability that the style is a top-0.1% seller (≈ top 20 styles) over the next 4 weeks. A relative-strength signal; the ranking is `forecast_units` |
+| `confidence_top1pct` | calibrated probability of being a top-1% seller over the next 4 weeks |
+
+## GET /health
+
+```bash
+curl localhost:8000/health
+```
+```json
+{"status": "ok", "model_version": "regressor-20200923-r94+clf-top1pct-r294+clf-top0.1pct-r135",
+ "prediction_cutoff": "2020-09-23", "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
+ "n_styles": 200, "n_styles_scored": 20318, "seasons": ["AW2020", "SS2020"]}
+```
+
+## GET /seasons
+
+```bash
+curl localhost:8000/seasons
+```
+```json
+{"seasons": [
+  {"id": "AW2020", "label": "Autumn/Winter 2020 (forecast)", "cutoff": "2020-09-23",
+   "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"}, "observed": false, "has_concepts": true,
+   "n_styles": 200, "default": true},
+  {"id": "SS2020", "label": "Spring/Summer 2020 (backtest)", "cutoff": "2020-05-27",
+   "forecast_window": {"start": "2020-05-27", "end": "2020-06-23"}, "observed": true, "has_concepts": false,
+   "n_styles": 200, "default": false}]}
+```
+
+With `season=SS2020`, list items add `actual_units` and `actual_rank` (e.g. `0599580` Timeless Midrise Brief:
+forecast 12,703.1, actual 14,674, actual rank 1), and the detail adds
+`"actual": {"units": …, "rank": …, "weekly": [4 × {"week_start", "units"}]}`.
+
+## GET /model/summary
+
+```bash
+curl localhost:8000/model/summary
+```
+Abridged:
+```json
+{
+  "success_definition": "A winner is a style whose units over the next 4 weeks rank in the top 1% of styles active at that cutoff …",
+  "horizon": "Styles turn over fast (median 19 active weeks), so 4 weeks is the longest window …",
+  "stock_caveat": "There is no stock data, so sales are censored demand …",
+  "ranking": "Styles are ranked by the regressor's forecast units; the classifiers add calibrated probabilities.",
+  "regressor": {"backtest": [{"method": "LightGBM regressor", "ndcg@50": {"mean": 0.924, "std": 0.031},
+                              "precision@12": {"mean": 0.725, "std": 0.125}}, "…"],
+                "ndcg50_wins": [{"baseline": "Last week × 4", "wins": 7, "of": 10}, "…"], "validation": ["…"]},
+  "classifier_top1pct": {"methods": ["…"], "calibration": {"ece_raw": 0.00361, "ece_calibrated": 0.00282, "…": "…"},
+                         "reliability_plot_url": "/images/classifier/reliability.png"},
+  "classifier_top0.1pct": {"methods": [{"method": "LightGBM classifier",
+                                        "backtest": {"pr_auc": 0.807, "precision@20": 0.735, "precision@50": 0.358, "recall@50": 0.91},
+                                        "validation": {"pr_auc": 0.456, "…": "…"}}, "…"]},
+  "seasonal": {"category_mix": [{"product_group": "Swimwear", "SS2020": 0.38, "AW2020": 0.0, "change_pts": -38.1}, "…"],
+               "ss2020_top10_hits": 7}
+}
+```
+Also present (omitted above): `regressor.validation_cutoff`, `backtest_cutoffs`, validation rows with `wape_top500`;
+per classifier `backtest_cutoffs`, `winners_per_cutoff`, `pr_auc_wins_vs_last_week_x4` and calibration
+`brier_raw`/`brier_calibrated`, `validation_ece_raw`/`validation_ece_calibrated`, `basis`; `seasonal.columns`.
+Every number comes from `outputs/figures/eval_table.md`, `outputs/figures/seasonal_comparison.md` and
+`outputs/classifier/per_cutoff*.csv`.
+
+## GET /styles/top
+
+Query parameters: `limit` (1–200, default 10), `offset` (≥ 0, default 0).
+
+```bash
+curl "localhost:8000/styles/top?limit=2"
+```
+```json
+{
+  "season": "AW2020", "season_label": "Autumn/Winter 2020 (forecast)", "observed": false,
+  "cutoff": "2020-09-23",
+  "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
+  "total": 200, "n_styles_scored": 20318, "limit": 2, "offset": 0,
+  "styles": [
+    {
+      "style_id": "0751471", "name": "Pluto RW slacks", "raw_name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
+      "prediction_score": 1.0, "confidence_top1pct": 1.0, "forecast_units": 7417.3,
+      "category": {"product_type": "Trousers", "garment_group": "Trousers", "index_group": "Ladieswear"},
+      "sales_history": {
+        "last_8_weeks": [{"week_start": "2020-07-29", "units": 764}, {"week_start": "2020-08-05", "units": 616},
+                         {"week_start": "2020-08-12", "units": 1291}, {"week_start": "2020-08-19", "units": 2070},
+                         {"week_start": "2020-08-26", "units": 2796}, {"week_start": "2020-09-02", "units": 2659},
+                         {"week_start": "2020-09-09", "units": 2016}, {"week_start": "2020-09-16", "units": 1711}],
+        "units_last_4w": 9182
+      },
+      "image_url": "/images/refs/0751471/0751471001.jpg"
+    },
+    {"style_id": "0762846", "name": "Lucy blouse", "rank": 2, "forecast_rank": 3, "prediction_score": 0.9419, "...": "..."}
+  ]
+}
+```
+
+`image_url` is the catalogue photo of the best-selling colourway, or `null` when it has not been downloaded
+(reference photos are Kaggle data and are not in the repository); the frontend shows a placeholder then.
+
+Errors: `limit=0`, `limit=201`, `offset=-1` or a non-integer → **422**:
+```json
+{"detail": "Invalid request parameters.",
+ "errors": [{"loc": ["query", "limit"], "msg": "Input should be less than or equal to 200", "type": "less_than_equal"}]}
+```
+
+## GET /styles/{style_id}
+
+`style_id` is the 7-digit `product_code`; the leading zero is optional (`751471` = `0751471`).
+
+```bash
+curl localhost:8000/styles/751471
+```
+```json
+{
+  "style_id": "0751471", "name": "Pluto RW slacks", "raw_name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
+  "prediction_score": 1.0, "confidence_top1pct": 1.0, "p_top0_1pct": 1.0, "forecast_units": 7417.3,
+  "category": {"product_type": "Trousers", "garment_group": "Trousers", "index_group": "Ladieswear"},
+  "attributes": {"product_group_name": "Garment Lower body", "garment_group_name": "Trousers",
+                 "index_group_name": "Ladieswear", "section_name": "Womens Everyday Collection",
+                 "colour_group_name": "Black", "graphical_appearance_name": "Solid",
+                 "detail_desc": "Ankle-length cigarette trousers in a stretch weave with a zip fly, …", "n_colours": 10},
+  "performance": {"units_last_1w": 1711, "units_last_2w": 3727, "units_last_4w": 9182, "units_last_12w": 17012,
+                  "units_same_4w_last_year": 3159, "units_to_date": 64305, "buyers_last_4w": 6367,
+                  "weeks_since_launch": 67, "discount_vs_peak_price": 0.0192, "online_share_last_4w": 0.6788},
+  "explanation": {
+    "why_selected": "Selected #1: highest forecast in Trousers (7,417 units for 2020-09-23 to 2020-10-20), sold in the last 2 weeks; P(top 0.1%) = 1.00.",
+    "reasons": [
+      {"text": "Units sold last week is 1,711: this lowers the forecast by 38% compared with repeating last week's sales for 4 weeks.",
+       "feature": "units sold last week", "value": "1,711", "direction": "lowers", "effect_pct": -38.0,
+       "raw": "units sold last week = 1,711 → lowers the forecast ×0.62 vs the last-week run-rate"},
+      "… 4 more"
+    ],
+    "source": "outputs/evidence/0751471/forecast.json"
+  },
+  "sales_history_26w": [{"week_start": "2020-03-25", "units": 1659, "buyers": 1121}, "…",
+                        {"week_start": "2020-09-16", "units": 1711, "buyers": 1178}],
+  "image_url": "/images/refs/0751471/0751471001.jpg",
+  "reference_image_urls": ["/images/refs/0751471/0751471001.jpg", "/images/refs/0751471/0751471042.jpg",
+                           "/images/refs/0751471/0751471041.jpg"],
+  "concept": {
+    "image_url": "/images/evidence/0751471/concept_2.png",
+    "reference_image_url": "/images/refs/0751471/0751471001.jpg",
+    "keep": [{"trait": "slim tapered ankle-length cigarette leg", "evidence": "detail_desc '…'; sold in 10 colourways …"}, "…"],
+    "change": [{"axis": "pattern", "from": "solid black", "to": "brushed wool-look houndstooth check in charcoal and camel"}, "…"],
+    "what_changed": "Charcoal-and-camel glen-check wool-look fabric; camel contrast side stripe down each leg. …",
+    "critic": {"decision": "approve", "status": "Critic: approved", "note": "Same slim tapered ankle-length trouser silhouette …",
+               "max_similarity_to_references": 0.7263,
+               "changes_not_visible": ["cropped hem with a small side split (still reads as ankle length)", "exposed metal-tip belt loops"]}
+  }
+}
+```
+
+- `name` is the display name: a trailing copy number such as `" (1)"` is removed. `raw_name` is the name as in
+  articles.csv.
+- The 5 `reasons` are the regressor's TreeSHAP drivers; each is a multiplier on the naive "last week × 4" forecast.
+- `why_selected` also explains non-selection, e.g. `GET /styles/0706016` (Jade, forecast rank 2): *"Forecast rank #2
+  (6,854 units); not in the top 3 because Trousers is already represented by #1 Pluto RW slacks (7,417 units
+  forecast)."*
+- `concept` is `null` for every style outside the top 3. For RICHIE (`0685814`) the critic did not approve the final
+  concept (`"decision": "revise"`, `"status": "Critic: not approved"`): the image model did not change the hoodie's
+  proportions.
+- `sales_history_26w` starts at the first sale for styles launched less than 26 weeks before the cutoff.
+
+Errors → **404** with the requested id:
+```json
+{"detail": "Style 0000001 is not in the published predictions (top 200 styles by forecast units).", "style_id": "0000001"}
+{"detail": "Malformed style_id 'abc': expected up to 7 digits (a product_code, e.g. 0751471).", "style_id": "abc"}
+```
+
+## GET /images/{path}
+
+Serves image files (`.jpg`, `.png`) from `outputs/refs/`, `outputs/evidence/` and the boards
+(`generated_concepts.png`, `final_board.png`, `evidence_sheet.png`). Use the URLs returned by the other endpoints.
+
+```bash
+curl -o concept.png localhost:8000/images/evidence/0751471/concept_2.png      # 200 image/png
+curl localhost:8000/images/cache/train.parquet                                 # 404
+```
+```json
+{"detail": "Image not found: cache/train.parquet"}
+```
+
+Anything else (other folders, non-image files, missing files, paths escaping `outputs/`) → **404** with the JSON above.
+
+## Error format
+
+| status | when | body |
+|---|---|---|
+| 404 | unknown or malformed `style_id` | `{"detail": "...", "style_id": "..."}` |
+| 404 | unknown `season` | `{"detail": "...", "season": "..."}` |
+| 404 | image not found / not served, unknown route | `{"detail": "..."}` |
+| 422 | query parameter out of range or wrong type | `{"detail": "Invalid request parameters.", "errors": [{"loc", "msg", "type"}]}` |
+
+## Reference photos for the demo
+
+Photos are not committed (H&M/Kaggle data). Winners: `python -m data_science.select` (or the `download_refs` one-liner
+in the README). For the list view, `python scripts/fetch_list_photos.py --n 50` fetches one photo per style for the top 50 into
+`outputs/refs/<style_id>/` with the same per-image Kaggle download (best-selling colourway first, next colourway
+when Kaggle has no image for it). Missing photos give `image_url: null`.

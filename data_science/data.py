@@ -225,7 +225,7 @@ def top_colour_articles(product_code: str, n: int = 3, as_of: date = config.FINA
             FROM read_parquet('{config.ARTICLES_PATH}') a LEFT JOIN s USING (article_id)
             WHERE a.product_code = ?
         )
-        SELECT arg_max(article_id, units) AS article_id, colour_group_name, max(units) AS units,
+        SELECT arg_max(article_id, struct_pack(u := units, a := -article_id)) AS article_id, colour_group_name, max(units) AS units,
                sum(units) AS colour_units
         FROM a GROUP BY colour_group_name ORDER BY colour_units DESC, article_id LIMIT ?
     """

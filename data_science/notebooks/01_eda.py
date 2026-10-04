@@ -1,6 +1,6 @@
 # %% [markdown]
 # # 01 — EDA: seasonality, category mix, style lifetime, new-style share
-# Run from the repo root: `python notebooks/01_eda.py`. Figures go to outputs/figures/.
+# Run from the repo root: `python data_science/notebooks/01_eda.py`. Figures go to outputs/figures/.
 
 # %%
 from __future__ import annotations
@@ -16,9 +16,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import config  # noqa: E402
-from forecasting import data  # noqa: E402
+from data_science import data  # noqa: E402
 
 FIG = config.FIGURES_DIR
 FIG.mkdir(parents=True, exist_ok=True)

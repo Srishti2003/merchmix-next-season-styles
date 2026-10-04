@@ -22,7 +22,7 @@ from PIL import Image, ImageDraw, ImageOps  # noqa: E402
 
 import config  # noqa: E402
 from agents import runtools  # noqa: E402
-from forecasting import select  # noqa: E402
+from data_science import select  # noqa: E402
 from image.board import _font, _wrap, compose_board  # noqa: E402
 
 GREEN, RED, GREY, INK = "#1baf7a", "#e34948", "#52514e", "#0b0b0b"

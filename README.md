@@ -1,116 +1,170 @@
-# Merchmix: next-season styles
+# Merchmix: next-season style intelligence (H&M data)
 
-Forecast next-season winning styles from H&M transactions, then generate new product concepts with an agent-based workflow.
+Predicts the three styles most likely to sell strongly in the next 4 weeks, turns each into a new product concept
+with generative AI, and serves the results through a FastAPI backend and a Streamlit app.
 
-![Final board: 3 forecast winners and their new concepts](outputs/final_board.png)
-
-**Evidence per winner:** sales curve, top SHAP drivers, reference → concept with critic verdict, KEEP/CHANGE,
-and the backtest summary ([`outputs/evidence_sheet.png`](outputs/evidence_sheet.png)).
-
-![Evidence sheet: from forecast to concept for each winner](outputs/evidence_sheet.png)
+```mermaid
+flowchart LR
+  A[H&M dataset<br/>31.8M transactions] --> B[Data processing<br/>DuckDB weekly style table]
+  B --> C[ML models<br/>LightGBM regressor + classifiers]
+  C --> D[Predictions<br/>outputs/predictions.json]
+  D --> E[Backend API<br/>FastAPI]
+  E --> F[Frontend<br/>Streamlit]
+  F --> G[Business user]
+```
 
 ## Results
 
-| # | Style | Forecast units, 23 Sep–20 Oct 2020 | What changed (visible in the concept) | Critic |
-|---|---|---|---|---|
-| 1 | Pluto RW slacks (trousers, `0751471`) | 7,417 | Charcoal-and-camel glen check; camel side stripe | approved |
-| 2 | Lucy blouse (shirt, `0762846`) | 6,492 | Burgundy satin; fuller sleeves gathered into deep cuffs | approved |
-| 3 | RICHIE HOOD (hoodie, `0685814`) | 5,486 | Heather-grey fabric; twin zip pockets; contrast-tipped cuffs | not approved |
+Forecast window **23 Sep – 20 Oct 2020** (data ends 22 Sep). Ranked by forecast units, one style per garment group,
+must have sold in the last 2 weeks. `prediction_score` = calibrated probability of being a top-0.1% seller.
 
-The hoodie's intended cropped, boxy shape was not produced by the image model, so the critic did not approve it.
-Full lineage per style: [`outputs/evidence/<code>/lineage.json`](outputs/evidence/).
+| Rank | Style | prediction_score | Forecast units | Garment group | Concept (critic) |
+|---|---|---|---|---|---|
+| 1 | Pluto RW slacks `0751471` | 1.00 | 7,417 | Trousers | glen check, camel side stripe (approved) |
+| 2 | Lucy blouse `0762846` | 0.94 | 6,492 | Blouses | burgundy satin, gathered sleeves (approved) |
+| 3 | RICHIE HOOD `0685814` | 1.00 | 5,486 | Jersey Basic | grey, zip pockets, striped cuffs (**not approved**: shape unchanged) |
 
-## Model
+![Three predicted winners and their next-season concepts](outputs/generated_concepts.png)
 
-- **Style** = `product_code` (all colourways of one design). **Target** = units sold in the next 4 weeks.
-- **LightGBM** trained on 45 weekly snapshots, predicting the uplift over the naive "last week × 4" run-rate.
-- **Backtest** (10 rolling weekly cutoffs, NDCG@50): model 0.924 vs 0.906 for both last-week × 4 and last-4-weeks,
-  7/10 cutoff wins against each. Last-4-weeks is beaten clearly only on the validation week (0.862 vs 0.569).
-  Where the model disagrees with last-week × 4, its demotions of fading styles were right 6/10, its promotions 3/10.
+| Overview | Top styles | Style detail | SS2020 detail (with actuals) |
+|---|---|---|---|
+| ![Overview page](docs/screenshots/overview.png) | ![Top styles page](docs/screenshots/top_styles.png) | ![Style detail page](docs/screenshots/style_detail.png) | ![SS2020 style detail page](docs/screenshots/style_detail_ss2020.png) |
+| **Model performance** | **Seasonal view** | **Concepts** | |
+| ![Model performance page](docs/screenshots/model_performance.png) | ![Seasonal view page](docs/screenshots/seasonal_view.png) | ![Concepts page](docs/screenshots/concepts.png) | |
 
-Details: [`outputs/figures/eval_table.md`](outputs/figures/eval_table.md), [`movers.md`](outputs/figures/movers.md), [WRITEUP.md](WRITEUP.md).
+- **Overview** (landing page): KPIs, the 3 picks, a "How to read this" box and links to every page.
+- **Top styles**: search by name or style id, filter by index group / product type / garment group, sort by units or
+  score, and download the filtered table as CSV; click a row for the detail page.
 
-## How it works
+Why each style was picked, with SHAP drivers and the concept lineage: [`outputs/evidence_sheet.png`](outputs/evidence_sheet.png).
 
-One **orchestrator** agent runs four helper agents in order. Each helper can only use its own tools.
+## Model in brief
 
-```mermaid
-flowchart TD
-  A["1 · Forecaster<br/>which 3 styles will sell most?"] --> B["2 · Style analyst<br/>what to keep, what to change"]
-  B --> C["3 · Designer<br/>draw the new product"]
-  C --> D["4 · Critic<br/>is it new but still recognisable?"]
-  D -- "no: one retry" --> C
-  D -- yes --> E["Final board + evidence files"]
+- **Style** = `product_code` (all colourways of one design; `style_id` = 7 digits, e.g. `0751471`).
+- **Success** = units in the next 4 weeks in the **top 1% of active styles at that cutoff** (~194 of ~19,300).
+- **Horizon** = 4 weeks: styles turn over fast (median 19 active weeks), so it is the longest window that can be
+  tested honestly; from the 23 Sep cutoff it covers the opening of autumn.
+- **Models** (LightGBM, 23 leakage-free features, 45 weekly training snapshots): a **regressor** forecasts units
+  (as uplift over "last week × 4") and does the ranking; two **classifiers** (top 1%, top 0.1%) with isotonic
+  calibration give the probabilities shown as scores.
+- **Validation**: 10-cutoff rolling backtest (2020-05-27 → 2020-07-29) plus a validation week (cutoff 2020-08-26);
+  every model is retrained only on cutoffs whose target ended before the scored cutoff.
+
+| Backtest mean (10 cutoffs) | Model | Last week × 4 | Last 4 weeks |
+|---|---|---|---|
+| Regressor, NDCG@50 | **0.924** | 0.906 | 0.906 |
+| Regressor, precision@12 | **0.725** | 0.708 | 0.658 |
+| Classifier top 1%, PR-AUC | **0.770** | 0.738 | 0.713 |
+| Classifier top 0.1%, PR-AUC | **0.807** | 0.750 | 0.743 |
+
+Honest reading: the regressor wins 7/10 cutoffs on NDCG@50 but only ties last week × 4 on the validation week
+(0.862 vs 0.864); the classifiers tie the regressor on ranking (PR-AUC 0.770 vs 0.771), so their value is a
+calibrated probability. Sources: [`eval_table.md`](outputs/figures/eval_table.md),
+[`eval_classifier.md`](outputs/classifier/eval_classifier.md), [`final_scores.md`](outputs/classifier/final_scores.md).
+
+## Brief → where to find it
+
+| Requirement | Where |
+|---|---|
+| EDA (trends, categories, seasonality, customers, data quality) | [`02_eda_extended.ipynb`](data_science/notebooks/02_eda_extended.ipynb), [`01_eda.py`](data_science/notebooks/01_eda.py), [`eda_insights.md`](outputs/figures/eda_insights.md) |
+| Style, success and period definitions | [WRITEUP §1](WRITEUP.md#1-problem-definition), "Model in brief" above |
+| Feature engineering | [`data_science/features.py`](data_science/features.py) |
+| Time-aware validation, no leakage | [`model.py`](data_science/model.py) (rolling backtest), [`classify.py`](data_science/classify.py), [`test_features.py`](tests/test_features.py), [`test_classify.py`](tests/test_classify.py) |
+| Baseline comparison | [`eval_table.md`](outputs/figures/eval_table.md), [`outputs/classifier/`](outputs/classifier/), Model performance page |
+| Top 3 with scores and reasons | Results above, [`predictions.json`](outputs/predictions.json), [`evidence/`](outputs/evidence/), [WRITEUP §5](WRITEUP.md#5-top-3-and-why) |
+| Concepts + linking explanation | [`generated_concepts.png`](outputs/generated_concepts.png), [`evidence_sheet.png`](outputs/evidence_sheet.png), [WRITEUP §6](WRITEUP.md#6-concepts-and-how-each-links-to-its-prediction) |
+| Stock limitation + extra data | [WRITEUP §8](WRITEUP.md#8-limitations), Model performance page |
+| Backend endpoints + 404 | [`backend/`](backend/), [API.md](API.md), [`test_api.py`](tests/test_api.py) |
+| Frontend list / detail | [`frontend/app.py`](frontend/app.py) (Overview, Top styles, Style detail, Model performance, Seasonal view, Concepts), [screenshots](docs/screenshots/) |
+| End-to-end flow | diagram above, [WRITEUP §7](WRITEUP.md#7-architecture) |
+| Training / prediction pipeline | [`train.py`](data_science/train.py), [`predict.py`](data_science/predict.py) |
+| API documentation | [API.md](API.md), `/docs` on the running API |
+| Setup instructions | "How to run" below |
+| Bonus: agentic workflow, seasonal view | "Bonus" below |
+
+## How to run (Codespaces / Linux, Python 3.11)
+
+```bash
+python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt   # or: uv venv --python 3.11 .venv
+cp .env.example .env                       # optional: HF_TOKEN (images), ANTHROPIC_API_KEY (agents)
+
+# Data: needs a Kaggle API token and accepting the competition rules (~3.7 GB of CSVs, kept outside the repo)
+c=h-and-m-personalized-fashion-recommendations
+for f in transactions_train.csv articles.csv customers.csv; do .venv/bin/kaggle competitions download -c $c -f $f -p ../hm-data; done
+.venv/bin/python scripts/convert_data.py --raw ../hm-data --out ../hm-data/data   # unzips, writes Parquet
+export HM_DATA_DIR=$(realpath ../hm-data/data)
+
+# Train and predict (the committed outputs already contain the results)
+.venv/bin/python -m data_science.train                    # features + classifiers + final scores
+.venv/bin/python -m data_science.predict                  # outputs/predictions.json (AW2020)
+.venv/bin/python -m data_science.predict --season SS2020  # outputs/predictions_SS2020.json (backtest season)
+.venv/bin/python -m data_science.summary                  # outputs/model_summary.json
+.venv/bin/python scripts/fetch_list_photos.py --n 50      # optional: catalogue photos (Kaggle, not committed)
+.venv/bin/python scripts/fetch_list_photos.py --n 50 --season SS2020   # same for the SS2020 backtest season
+
+# App: two terminals
+.venv/bin/uvicorn backend.api:app --host 0.0.0.0 --port 8000
+API_URL=http://localhost:8000 .venv/bin/streamlit run frontend/app.py --server.address 0.0.0.0 --server.port 8501
+
+.venv/bin/python -m pytest -q                             # data-dependent tests skip without the data
+
+# Dev-only (screenshots, WRITEUP.pdf): requirements-dev.txt + python -m playwright install chromium
 ```
 
-1. **Forecaster**: runs the LightGBM model on the sales data and picks the top 3 styles (one per garment group).
-2. **Style analyst**: writes a short brief for each one: what made it sell (KEEP) and what to change, plus an
-   image prompt. The rules for a good brief are a reusable **skill** (`style-dna-brief`).
-3. **Designer**: edits the product photo with an image model (FLUX.1 Kontext) to create the new concept.
-4. **Critic**: compares the new image with the original (CLIP similarity plus a visual check). It approves it or
-   sends one revision note back to the designer.
+The API and app run from the committed `outputs/` alone, so no data download is needed to try them. Without the
+photos, image URLs are `null` and the app shows placeholders. In a Codespace, open the **Ports** tab and click the
+globe icon next to port **8501**; port 8000 does not need to be public. `python -m data_science.train --with-regressor`
+also retrains the regressor (this rewrites the published evaluation files).
 
-The agents reach data and models through three **MCP servers** (`retail`, `forecast`, `image`). Every step is saved
-in `outputs/evidence/<code>/lineage.json`, and every tool call in [`trace.jsonl`](outputs/runs/20260928-005623/trace.jsonl).
+## API
 
-## Seasonal bonus
+| Method | Path | Returns |
+|---|---|---|
+| GET | `/styles/top?limit=10&offset=0&season=AW2020` | ranked styles: name (+ `raw_name`), scores, category (incl. `index_group`), 8-week sales, photo URL; `n_styles_scored` |
+| GET | `/styles/{style_id}?season=AW2020` | product info, scores, SHAP reasons, 26-week history, concept (404 if unknown) |
+| GET | `/seasons` | AW2020 (forecast) and SS2020 (backtest with actuals) |
+| GET | `/model/summary` | model vs baselines, calibration, definitions |
+| GET | `/health` | status, model version, cutoff, number of styles |
+| GET | `/images/{path}` | photos, concepts, plots |
 
-Same pipeline at a late-May cutoff: 7/10 of the predicted summer top-10 were in the actual top-10. From summer to
-autumn, swimwear falls from 38% to 0% of the predicted top-100 and upper-body garments rise from 31% to 63%.
-See [`outputs/figures/seasonal_comparison.md`](outputs/figures/seasonal_comparison.md).
+Full reference with examples and error cases: [API.md](API.md).
 
-## How to run (Windows PowerShell, Python 3.11)
-
-```powershell
-# 1. Setup
-py -3.11 -m venv .venv; .venv\Scripts\pip install -r requirements.txt
-copy .env.example .env        # add HF_TOKEN for real images (free Hugging Face account)
-
-# 2. Data (needs a Kaggle API token and accepting the competition rules)
-$c = "h-and-m-personalized-fashion-recommendations"
-.venv\Scripts\kaggle competitions download -c $c -f transactions_train.csv -p raw
-.venv\Scripts\kaggle competitions download -c $c -f articles.csv -p raw
-.venv\Scripts\python scripts\convert_data.py --raw raw --out data
-
-# 3. Forecast: training snapshots, model + evaluation, top-3 + evidence + reference photos
-.venv\Scripts\python -m forecasting.features
-.venv\Scripts\python -m forecasting.model
-.venv\Scripts\python -m forecasting.select
-
-# 4. Agent run: --mock uses a local stand-in instead of the image model (no image API key)
-.venv\Scripts\python -m agents.orchestrator --cutoff 2020-09-22 --mock
-.venv\Scripts\python -m agents.orchestrator --cutoff 2020-09-22
-
-# 5. Finalize: lineage, review sheet, board (needs outputs/runs/<run_id>/captions.json), evidence sheet, tests
-.venv\Scripts\python scripts\finalize_run.py --run <run_id> --final 0751471=concept_2.png 0762846=concept_1.png 0685814=concept_2.png
-.venv\Scripts\python scripts\evidence_sheet.py --run <run_id>
-.venv\Scripts\python -m pytest
-```
-
-The agents (step 4, including `--mock`) need Claude: `ANTHROPIC_API_KEY` in `.env` or a local Claude Code login.
-Reference photos (`outputs/refs/`) are H&M/Kaggle data and are not included; step 3 downloads them.
-
-## Repository layout
+## Repository structure
 
 ```
-forecasting/        data (DuckDB), features, LightGBM model, evaluation, top-3 selection
-mcp_servers/        FastMCP servers: retail, forecast, image
-agents/             orchestrator, in-process bookkeeping tools, sub-agent prompts
-image/              image generation (HF Space / Replicate / mock) with quota guards, CLIP, board layout
-skills_lib/         style-dna-brief template and validator (works without the SDK)
-.claude/skills/     the style-dna-brief skill
-scripts/            data conversion, MCP smoke test, image test, finalize, evidence sheet
-tests/              leakage, NDCG, quota guards, skill examples (21 tests)
-notebooks/          EDA script
-outputs/            board, evidence sheet, per-style evidence, figures, models, agent run
+data_science/            data processing, features, models, evaluation
+  notebooks/             EDA (executed notebook + script)
+  features.py            leakage-free weekly snapshot features
+  train.py  predict.py   training pipeline, prediction files for the API
+  model.py classify.py   regressor (+ backtest), winner classifiers + calibration
+backend/                 api.py (HTTP), model_service.py (predictions), schemas.py
+frontend/                app.py (Streamlit), api_client.py; theme in .streamlit/config.toml
+models/                  LightGBM regressor/classifiers, isotonic calibrators
+outputs/                 generated_concepts.png, predictions*.json, evidence/, figures/, classifier/
+agents/ mcp_servers/ image/ skills_lib/ .claude/skills/   agentic concept workflow (bonus)
+scripts/                 data conversion, photos, board/evidence sheet, screenshots
+tests/                   leakage, metrics, calibration, API, frontend, agents
+docs/screenshots/        app screenshots
 ```
+
+## Bonus
+
+**Agentic workflow.** An orchestrator (Claude Agent SDK) runs forecaster → style analyst → designer → critic
+sub-agents through three MCP servers (`retail`, `forecast`, `image`) and a reusable `style-dna-brief` skill.
+Guard-rails are in code (permission gate, image budget, one revision), and every step is logged in
+[`outputs/evidence/<code>/lineage.json`](outputs/evidence/) and the [agent trace](outputs/runs/20260928-005623/).
+
+**Seasonal view.** The same pipeline at the 27 May 2020 cutoff (SS2020) can be checked against what sold: 7/10 of
+the predicted top 10 were in the actual top 10. From SS2020 to AW2020, swimwear falls from 38% to 0% of the
+predicted top-100 and upper-body garments rise from 31% to 63%
+([`seasonal_comparison.md`](outputs/figures/seasonal_comparison.md); Seasonal view page; `?season=SS2020` in the API).
 
 ## Limitations
 
-- **No stock data.** "Sold in the last 2 weeks" is only a proxy for availability; sold-out styles look like weak sellers.
-- **4-week horizon.** It covers the opening of autumn, not a full season; longer horizons were not validated.
-- **Hoodie shape not achieved.** The image model changed fabric, colour and trims but not the garment's proportions.
-- **CLIP is weak on colour.** Colourways of the same style score 0.80–0.94, so the critic also checks images visually.
+- **No stock data:** sales are censored demand; a sold-out style looks like a weak seller. "Sold in the last 2 weeks" is the only availability proxy.
+- **4-week horizon:** covers the opening of autumn, not a full season; longer horizons were not validated.
+- **Cold start:** 32% of weekly units come from styles under 12 weeks old; brand-new styles cannot be ranked.
+- **Ranking vs naive baseline:** gains over "last week × 4" are small and mostly come from demoting fading styles.
+- **Image model:** fabric, colour and trims change well, but the hoodie's proportions did not (critic: not approved); CLIP is a weak novelty check.
 
-More in [WRITEUP.md](WRITEUP.md) (also as [PDF](WRITEUP.pdf)): approach, why 4 weeks, full results, lineage, limitations, issues hit.
-Evidence: [`outputs/evidence/`](outputs/evidence/) · agent run: [`outputs/runs/20260928-005623/`](outputs/runs/20260928-005623/).
+Full write-up: [WRITEUP.md](WRITEUP.md) ([PDF](WRITEUP.pdf)).

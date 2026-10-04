@@ -62,7 +62,7 @@ def main() -> None:
     if args.backend == "mock":
         os.environ["HM_EVIDENCE_DIR"] = str(ROOT / "outputs" / "mock_run" / "evidence")
     import config
-    from forecasting import select
+    from data_science import select
     from image import board, generate, similarity
 
     print(f"backend = {args.backend} | HF token: {generate.hf_available()} | "

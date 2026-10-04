@@ -1,6 +1,6 @@
 """MCP server 'retail': style attributes, sales curves, reference images, season summaries.
 
-Thin FastMCP stdio wrapper over forecasting.data / forecasting.select — no business logic here.
+Thin FastMCP stdio wrapper over data_science.data / data_science.select — no business logic here.
 Run: python mcp_servers/retail_data.py
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ from fastmcp import FastMCP  # noqa: E402
 from fastmcp.exceptions import ToolError  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
-from forecasting import data, select  # noqa: E402
+from data_science import data, select  # noqa: E402
 
 mcp = FastMCP("retail", instructions=(
     "H&M sales data 2018-09-20 → 2020-09-22, aggregated to styles (product_code = 7-digit article_id prefix). "
@@ -139,7 +139,7 @@ def get_reference_images(product_code: ProductCode) -> list[str]:
     paths = select.reference_images(code)
     if not paths:
         raise ToolError(f"No reference images downloaded for {code}. They are fetched for the top-3 winners by "
-                        "`python -m forecasting.select` (see outputs/refs/).")
+                        "`python -m data_science.select` (see outputs/refs/).")
     return [str(p) for p in paths]
 
 

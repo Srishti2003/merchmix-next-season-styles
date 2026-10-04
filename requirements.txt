@@ -2,6 +2,8 @@
 duckdb
 pyarrow
 pandas
+numpy
+scipy
 lightgbm
 shap
 matplotlib
@@ -9,8 +11,15 @@ pillow
 fastmcp
 claude-agent-sdk
 replicate
+gradio_client
 open_clip_torch
 torch
 python-dotenv
 kaggle
 pytest
+fastapi
+pydantic
+uvicorn
+httpx
+streamlit
+altair

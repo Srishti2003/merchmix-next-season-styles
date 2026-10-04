@@ -147,3 +147,96 @@ def movers(snap: pd.DataFrame, score: np.ndarray, n: int = 10, pool: int = 100) 
                      f"rank for {int(g['model_right'].sum())}/{len(g)} (median actual rank {g['actual_rank'].median():.0f}; "
                      f"median model rank {g['model_rank'].median():.0f} vs baseline rank {g['baseline_rank'].median():.0f}).")
     return promoted, demoted, lines
+
+
+# --- classification metrics (success = top-1% style), pure numpy ------------------------------------------
+
+def average_precision(y: np.ndarray, score: np.ndarray) -> float:
+    """PR-AUC as average precision, tie-aware: tied scores enter the ranking as one block
+    (precision/recall evaluated at each distinct threshold, like sklearn's average_precision_score)."""
+    y, s = np.asarray(y, float), np.asarray(score, float)
+    if y.sum() == 0:
+        return float("nan")
+    order = np.argsort(-s, kind="stable")
+    y, s = y[order], s[order]
+    last = np.r_[np.flatnonzero(np.diff(s) != 0), len(s) - 1]  # last index of each tie block
+    tp = np.cumsum(y)[last]
+    precision = tp / (last + 1)
+    recall = tp / y.sum()
+    return float(np.sum(np.diff(np.r_[0.0, recall]) * precision))
+
+
+def precision_at_k(y: np.ndarray, score: np.ndarray, k: int) -> float:
+    """Share of successes among the k highest scores (stable tie-break by position)."""
+    return float(np.asarray(y, float)[_top(np.asarray(score, float), k)].mean())
+
+
+def recall_at_k(y: np.ndarray, score: np.ndarray, k: int) -> float:
+    """Share of all successes that appear in the k highest scores."""
+    y = np.asarray(y, float)
+    return float(y[_top(np.asarray(score, float), k)].sum() / max(1.0, y.sum()))
+
+
+def classification_metrics(y: np.ndarray, score: np.ndarray) -> dict[str, float]:
+    """PR-AUC, precision@20/@50, recall@50 for one cutoff."""
+    return {"pr_auc": average_precision(y, score), "precision@20": precision_at_k(y, score, 20),
+            "precision@50": precision_at_k(y, score, 50), "recall@50": recall_at_k(y, score, 50)}
+
+
+def brier(y: np.ndarray, p: np.ndarray) -> float:
+    """Mean squared error of probabilities."""
+    return float(np.mean((np.asarray(p, float) - np.asarray(y, float)) ** 2))
+
+
+CAL_BINS = np.array([0, 0.01, 0.03, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0001])
+
+
+def reliability(y: np.ndarray, p: np.ndarray, bins: np.ndarray = CAL_BINS) -> pd.DataFrame:
+    """Per probability bin: n, mean predicted, observed success rate (for a reliability table/plot)."""
+    y, p = np.asarray(y, float), np.asarray(p, float)
+    b = np.digitize(p, bins) - 1
+    rows = [{"bin": f"{bins[i]:.2f}–{min(bins[i + 1], 1):.2f}", "n": int((b == i).sum()),
+             "mean_pred": float(p[b == i].mean()), "observed": float(y[b == i].mean())}
+            for i in range(len(bins) - 1) if (b == i).any()]
+    return pd.DataFrame(rows)
+
+
+def ece(y: np.ndarray, p: np.ndarray, bins: np.ndarray = CAL_BINS) -> float:
+    """Expected calibration error: n-weighted mean |predicted − observed| over the bins."""
+    r = reliability(y, p, bins)
+    return float((r["n"] * (r["mean_pred"] - r["observed"]).abs()).sum() / r["n"].sum())
+
+
+class Isotonic:
+    """Monotone (non-decreasing) calibration map fitted by pool-adjacent-violators; numpy only.
+    Tied x are pooled first; adjacent blocks are pooled while not strictly increasing (equal neighbours too, which
+    leaves the fitted function unchanged), so only block boundaries are stored: each block is flat between its
+    lowest and highest x, and prediction interpolates linearly between blocks and clips outside the fitted range
+    (like sklearn's IsotonicRegression)."""
+
+    def fit(self, x: np.ndarray, y: np.ndarray) -> "Isotonic":
+        ux, inv, cnt = np.unique(np.asarray(x, float), return_inverse=True, return_counts=True)
+        uy = np.bincount(inv, weights=np.asarray(y, float)) / cnt  # mean y per distinct x
+        vals, wts, xlo, xhi = [], [], [], []
+        for xi, yi, wi in zip(ux, uy, cnt.astype(float)):
+            vals.append(yi); wts.append(wi); xlo.append(xi); xhi.append(xi)
+            while len(vals) > 1 and vals[-2] >= vals[-1]:
+                w = wts[-2] + wts[-1]
+                v = (vals[-2] * wts[-2] + vals[-1] * wts[-1]) / w
+                vals.pop(); wts.pop(); xlo.pop(); h = xhi.pop()
+                vals[-1], wts[-1], xhi[-1] = v, w, h
+        # knots at both ends of each block (one knot when a block covers a single x)
+        kx = [k for lo, hi in zip(xlo, xhi) for k in ((lo,) if lo == hi else (lo, hi))]
+        ky = [v for lo, hi, v in zip(xlo, xhi, vals) for _ in ((lo,) if lo == hi else (lo, hi))]
+        self.x_, self.y_ = np.array(kx), np.array(ky)
+        return self
+
+    def predict(self, x: np.ndarray) -> np.ndarray:
+        return np.interp(np.asarray(x, float), self.x_, self.y_)
+
+    def to_dict(self) -> dict:
+        return {"x": self.x_.tolist(), "y": self.y_.tolist()}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Isotonic":
+        obj = cls(); obj.x_, obj.y_ = np.array(d["x"]), np.array(d["y"]); return obj
