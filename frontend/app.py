@@ -44,7 +44,7 @@ GLOSSARY = (
 CSS = """<style>
 section[data-testid="stSidebar"] div[data-testid="stSidebarHeader"] { height: 2.25rem; padding-top: .5rem; }
 section[data-testid="stSidebar"] div[data-testid="stSidebarUserContent"] { padding-top: 0; }
-div.block-container { padding-top: 2.5rem; }
+div.block-container { padding-top: 4rem; }  /* just below the 60px top bar */
 </style>"""
 
 HELP = {
@@ -128,6 +128,12 @@ def pick_label(s: dict) -> str:
     """'Pick #3 · rank 4 by units' for a selected style, 'Rank 5 by units' otherwise."""
     by_units = f"rank {s['forecast_rank']} by units"
     return f"Pick #{s['rank']} · {by_units}" if s["rank"] else by_units[:1].upper() + by_units[1:]
+
+
+def category_text(c: dict) -> str:
+    """'Hoodie · Jersey Basic', or just 'Trousers' when product type and garment group are the same."""
+    parts = [c.get("product_type"), c.get("garment_group")]
+    return " · ".join(dict.fromkeys(p for p in parts if p))
 
 
 def badge(text: str, ok: bool) -> None:
@@ -230,7 +236,7 @@ def page_overview(season: str) -> None:
             with txt:
                 st.caption(pick_label(s))
                 st.markdown(f"**{s['name']}**")
-                st.caption(f"{s['category']['product_type']} · {s['category']['garment_group']}")
+                st.caption(category_text(s["category"]))
                 st.markdown(f"{num(s['forecast_units'])} units · score {score(s['prediction_score'])}")
             if st.button("Open style →", key=f"ov_{s['style_id']}", width="stretch"):
                 open_style(s["style_id"])
@@ -306,7 +312,7 @@ def page_top(season: str) -> None:
             b.metric("Forecast units", num(s["forecast_units"]), help=HELP["units"])
             if head["observed"]:
                 st.caption(f"Actual: {units(s['actual_units'])} (rank {s['actual_rank']:,})")
-            st.caption(f"{s['category']['product_type']} · {s['category']['garment_group']}")
+            st.caption(category_text(s["category"]))
             concept = api(f"/styles/{s['style_id']}", season=season).get("concept")
             if concept:
                 critic_badge(concept)
@@ -434,7 +440,7 @@ def page_detail(season: str) -> None:
             return
         raise
     st.header(f"{d['name']}  ·  {d['style_id']}")
-    st.caption(f"{pick_label(d)} · {d['category']['product_type']} · {d['category']['garment_group']} · "
+    st.caption(f"{pick_label(d)} · {category_text(d['category'])} · "
                f"window {window_text(d['forecast_window'])}")
     st.space("small")  # keeps the image's hover toolbar (expand icon) clear of the subtitle
 

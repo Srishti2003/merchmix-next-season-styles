@@ -1,6 +1,6 @@
 """Take app screenshots into docs/screenshots/ with headless Chromium (dev only).
 
-  pip install playwright && python -m playwright install chromium   # plus: sudo python -m playwright install-deps chromium
+  pip install -r requirements-dev.txt && python -m playwright install chromium   # plus: sudo python -m playwright install-deps chromium
   python scripts/screenshots.py          # needs the API and Streamlit running (APP_URL, default port 8501)
 """
 import os
@@ -22,6 +22,9 @@ with sync_playwright() as p:
         pg.goto(BASE + path)
         pg.get_by_text(marker).first.wait_for(timeout=60000)
         pg.wait_for_timeout(4000)
+        pg.evaluate("document.querySelectorAll('[data-testid=stMain], [data-testid=stAppScrollToBottomContainer]')"
+                    ".forEach(e => e.scrollTo(0, 0))")  # Streamlit can scroll the main pane while rendering
+        pg.wait_for_timeout(500)
         body = pg.inner_text("body")
         assert not any(w in body for w in ("Traceback", "StreamlitAPIException", "not reachable")), name
         pg.screenshot(path=f"{OUT}/{name}.png")

@@ -26,9 +26,15 @@ must have sold in the last 2 weeks. `prediction_score` = calibrated probability 
 
 ![Three predicted winners and their next-season concepts](outputs/generated_concepts.png)
 
-| Overview | Top styles | Style detail | Seasonal view |
+| Overview | Top styles | Style detail | SS2020 detail (with actuals) |
 |---|---|---|---|
-| ![Overview page](docs/screenshots/overview.png) | ![Top styles page](docs/screenshots/top_styles.png) | ![Style detail page](docs/screenshots/style_detail.png) | ![Seasonal view page](docs/screenshots/seasonal_view.png) |
+| ![Overview page](docs/screenshots/overview.png) | ![Top styles page](docs/screenshots/top_styles.png) | ![Style detail page](docs/screenshots/style_detail.png) | ![SS2020 style detail page](docs/screenshots/style_detail_ss2020.png) |
+| **Model performance** | **Seasonal view** | **Concepts** | |
+| ![Model performance page](docs/screenshots/model_performance.png) | ![Seasonal view page](docs/screenshots/seasonal_view.png) | ![Concepts page](docs/screenshots/concepts.png) | |
+
+- **Overview** (landing page): KPIs, the 3 picks, a "How to read this" box and links to every page.
+- **Top styles**: search by name or style id, filter by index group / product type / garment group, sort by units or
+  score, and download the filtered table as CSV; click a row for the detail page.
 
 Why each style was picked, with SHAP drivers and the concept lineage: [`outputs/evidence_sheet.png`](outputs/evidence_sheet.png).
 
@@ -69,7 +75,7 @@ calibrated probability. Sources: [`eval_table.md`](outputs/figures/eval_table.md
 | Concepts + linking explanation | [`generated_concepts.png`](outputs/generated_concepts.png), [`evidence_sheet.png`](outputs/evidence_sheet.png), [WRITEUP §6](WRITEUP.md#6-concepts-and-how-each-links-to-its-prediction) |
 | Stock limitation + extra data | [WRITEUP §8](WRITEUP.md#8-limitations), Model performance page |
 | Backend endpoints + 404 | [`backend/`](backend/), [API.md](API.md), [`test_api.py`](tests/test_api.py) |
-| Frontend list / detail | [`frontend/app.py`](frontend/app.py), [screenshots](docs/screenshots/) |
+| Frontend list / detail | [`frontend/app.py`](frontend/app.py) (Overview, Top styles, Style detail, Model performance, Seasonal view, Concepts), [screenshots](docs/screenshots/) |
 | End-to-end flow | diagram above, [WRITEUP §7](WRITEUP.md#7-architecture) |
 | Training / prediction pipeline | [`train.py`](data_science/train.py), [`predict.py`](data_science/predict.py) |
 | API documentation | [API.md](API.md), `/docs` on the running API |
@@ -101,6 +107,8 @@ export HM_DATA_DIR=$(realpath ../hm-data/data)
 API_URL=http://localhost:8000 .venv/bin/streamlit run frontend/app.py --server.address 0.0.0.0 --server.port 8501
 
 .venv/bin/python -m pytest -q                             # data-dependent tests skip without the data
+
+# Dev-only (screenshots, WRITEUP.pdf): requirements-dev.txt + python -m playwright install chromium
 ```
 
 The API and app run from the committed `outputs/` alone, so no data download is needed to try them. Without the
@@ -112,7 +120,7 @@ also retrains the regressor (this rewrites the published evaluation files).
 
 | Method | Path | Returns |
 |---|---|---|
-| GET | `/styles/top?limit=10&offset=0&season=AW2020` | ranked styles: scores, category, 8-week sales, photo URL |
+| GET | `/styles/top?limit=10&offset=0&season=AW2020` | ranked styles: name (+ `raw_name`), scores, category (incl. `index_group`), 8-week sales, photo URL; `n_styles_scored` |
 | GET | `/styles/{style_id}?season=AW2020` | product info, scores, SHAP reasons, 26-week history, concept (404 if unknown) |
 | GET | `/seasons` | AW2020 (forecast) and SS2020 (backtest with actuals) |
 | GET | `/model/summary` | model vs baselines, calibration, definitions |

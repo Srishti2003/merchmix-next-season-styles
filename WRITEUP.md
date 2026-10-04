@@ -170,10 +170,13 @@ flowchart TD
   Nothing in the API retrains.
 - **backend/:** `model_service.py` loads the predictions once and has no web code; `api.py` handles HTTP only
   (validation, 404/422 JSON, CORS, images); `schemas.py` holds the Pydantic models.
-  - Endpoints: `/styles/top`, `/styles/{id}`, `/seasons`, `/model/summary`, `/health`, `/images`.
-- **frontend/:** Streamlit, talking only to the API; images are fetched server-side.
-  - Pages: overview (KPIs, the 3 picks, how to read the scores), top styles (search, filters, CSV download), style
-    detail (chart, reasons, concept, previous/next), model performance, seasonal view, concepts.
+  - Endpoints: `/styles/top`, `/styles/{id}`, `/seasons`, `/model/summary`, `/health`, `/images`. Display names
+    drop the copy number (`raw_name` keeps it); both `/styles` endpoints take `?season=AW2020|SS2020`.
+- **frontend/:** Streamlit, talking only to the API; images are fetched server-side. Light and dark theme, a sidebar
+  glossary and tooltips on every metric.
+  - Pages: overview (KPIs, the 3 picks, how to read the scores), top styles (search, filters, sort, CSV download),
+    style detail (chart, reasons, concept, previous/next; actuals for SS2020), model performance (tiles, charts vs
+    baselines, exact tables), seasonal view, concepts.
 - **Agentic layer (bonus):** a Claude Agent SDK orchestrator with 4 sub-agents, 3 MCP servers (`retail`,
   `forecast`, `image`) and the `style-dna-brief` skill.
   - Guard-rails are in code: a permission gate (writes only under `outputs/`), an image budget (≤ 4 new images,

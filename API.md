@@ -95,6 +95,9 @@ Abridged:
                "ss2020_top10_hits": 7}
 }
 ```
+Also present (omitted above): `regressor.validation_cutoff`, `backtest_cutoffs`, validation rows with `wape_top500`;
+per classifier `backtest_cutoffs`, `winners_per_cutoff`, `pr_auc_wins_vs_last_week_x4` and calibration
+`brier_raw`/`brier_calibrated`, `validation_ece_raw`/`validation_ece_calibrated`, `basis`; `seasonal.columns`.
 Every number comes from `outputs/figures/eval_table.md`, `outputs/figures/seasonal_comparison.md` and
 `outputs/classifier/per_cutoff*.csv`.
 
@@ -107,6 +110,7 @@ curl "localhost:8000/styles/top?limit=2"
 ```
 ```json
 {
+  "season": "AW2020", "season_label": "Autumn/Winter 2020 (forecast)", "observed": false,
   "cutoff": "2020-09-23",
   "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
   "total": 200, "n_styles_scored": 20318, "limit": 2, "offset": 0,

@@ -1,6 +1,6 @@
 """Render WRITEUP.md to WRITEUP.pdf (images and the Mermaid diagram included) with headless Chromium.
 
-  pip install markdown playwright && python -m playwright install chromium   # dev-only tools
+  pip install -r requirements-dev.txt && python -m playwright install chromium   # dev-only tools
   python scripts/build_writeup_pdf.py
 """
 from __future__ import annotations

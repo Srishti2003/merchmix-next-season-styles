@@ -81,6 +81,7 @@ def test_top_page_renders(api) -> None:
     assert "Pluto RW slacks" in text and "(1)" not in text and "RICHIE HOOD" in text
     assert "Pick #1 · rank 1 by units" in text and "Pick #3 · rank 4 by units" in text
     assert "Critic: not approved" in text  # RICHIE's concept is shown honestly
+    assert "Trousers · Trousers" not in text and "Hoodie · Jersey Basic" in text
     assert ("so Jade HW Skinny Denim TRS (#2 by units) is skipped because Trousers is already covered by "
             "Pluto RW slacks.") in text
     table = at.dataframe[0].value
