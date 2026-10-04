@@ -121,3 +121,72 @@ LLM. The run: 7 min, 59 tool calls across 5 agents, 3 GPU generations.
 Plug in inventory and open-to-buy so selection is stock-aware; add new-style cold-start (attribute-similarity
 to past launches); route concepts to a buyer approval queue with the lineage attached; and extend the critic
 with a shape check (silhouette/edge comparison) instead of relying on CLIP.
+
+## 9. Full-stack phase 1: success definition, winner classifier, extended EDA
+Numbers in this section come from `outputs/classifier/{eval_classifier.md, eval_classifier_top0.1pct.md,
+final_scores.md}` and `notebooks/02_eda_extended.ipynb`.
+
+**Success definition.** A style is a *winner* if its units in the next 4 weeks rank in the **top 1% of styles
+active at that cutoff** (sold in the previous 12 weeks). The threshold is set per cutoff, not globally, so it moves
+with the season (857–1,512 units across the scored cutoffs; about 194 winners out of ~19,300 active styles). Top 1%
+matches the decision: a buyer can follow up on a short list, not thousands of styles. And because it's a rank
+rather than a fixed unit count, it isn't distorted by seasonal swings or by the 2020 COVID dip.
+
+**Why 4 weeks.** See §2. In short, styles turn over fast (median 19 active weeks, 32% of units from styles under 12
+weeks old). Four weeks is the longest window in which "which existing styles will lead" can be tested honestly, and
+from the 23 Sep cutoff those 4 weeks are the opening of autumn.
+
+**Stock limitation.** There's no stock or availability data, so observed sales are *censored demand*: a style that
+sold out, or was never fully ranged in a store, looks like a weak seller. The model learns these as decliners and
+will under-rank styles that were held back by supply. The reverse also happens: a style with deep stock and a
+markdown can look like a riser. "Sold in the last 2 weeks" removes only styles that are clearly gone. No inventory
+assumptions were added.
+
+**Extra data that would help, in order of value:** stock on hand and availability by store/size (to un-censor
+demand); the markdown calendar and planned promotions (to separate price-driven from organic demand); returns (net
+units, and to catch fit problems); web traffic such as views, add-to-cart and searches (an early demand signal before
+sales); store footfall (to normalise store sales); size curves (to see whether a style is limited by broken sizes).
+
+**Classifier result.** A LightGBM binary classifier on the same 23 features, with the same 10-cutoff rolling backtest
+and no leakage. The isotonic calibrator used at each cutoff is fitted only on out-of-fold predictions whose labels
+were already known there.
+- **It beats the naive baselines:** backtest PR-AUC 0.770 vs 0.738 for last week × 4 (ahead at 9/10 cutoffs) and
+  0.713 for last 4 weeks (10/10). Precision@50 is 0.986 vs 0.938.
+- **It ties the regressor:** PR-AUC 0.770 vs 0.771, with the classifier ahead at 5/10 cutoffs. Precision@50 gives
+  5 wins and 4 ties.
+- **Its value is a calibrated probability, not a better ranking.** Isotonic calibration lowers ECE from 0.00361 to
+  0.00282 (backtest) and from 0.00271 to 0.00225 (validation). Raw probabilities above 0.4 were overconfident.
+- **Saturation:** at the final cutoff, P(top 1%) is ≥ 0.999 for 17 of the regressor's top-20 styles, so it can't
+  separate them.
+- **Stricter top-0.1% label:** its probabilities spread out (10 distinct values among the regressor's top 20).
+  But isotonic calibration did not lower its backtest ECE (0.00041 raw vs 0.00044 calibrated), and on the
+  validation week it lost to last week × 4 (PR-AUC 0.456 vs 0.566). It was therefore not used.
+- **What the scores mean in the outputs:** the ranking stays the regressor's forecast units (published top-3).
+  `prediction_score` is the calibrated P(top 1%), with ties broken by forecast units, so all three winners show
+  1.000. `confidence_top1pct` carries the same value.
+
+**Why perennial basics such as Jade HW Skinny Denim and Cat Tee are not in the top 3.**
+- *The rule allows one style per garment group.* Jade is a trouser, and Pluto, also a trouser, has the higher
+  forecast (7,417 vs 6,854 units).
+- *Forecast volume.* Cat Tee is in the same garment group as RICHIE (Jersey Basic) and has a much lower forecast
+  (2,682 units, regressor rank 29, vs 5,486). It reached the classifier's top 3 only because P(top 1%) ties at 1.000
+  for 24 styles, and tiny differences in raw probability decided the order.
+- *Design value.* Jade has sold in 99 consecutive weeks and sold 12,527 units in the same 4 weeks last year. A
+  never-out-of-stock basic tells the design team little that's new. This is a judgement, not part of the rule:
+  RICHIE has also sold for 97 weeks.
+
+**EDA findings (extended notebook).**
+1. **Duplicate rows are multi-unit purchases, not errors.** 9.36% of transaction rows are exact repeats of another
+   row; the raw CSV with the real customer_id gives the same count. They occur on every day (6.1–15.7% of daily
+   rows), and their frequency falls steeply with group size, with small bumps at 6 and 8. Each row is kept as one
+   unit.
+2. **Customers are bimodal by age:** peaks at 21 and 51, 1.16% missing. Ages 25–34 buy 36.4% of units.
+3. **Online share is 66.7–74.8% of units in every age band**, highest for 25–34. Trousers, dresses and sweaters
+   lead the categories in every band.
+4. **Data quality:** no missing dates (734 of 734 days); 995 articles (390 styles) never sold; 0.39% of articles
+   have no description; `product_code` matches `article_id // 1000` for every article, so `style_id` is stable.
+   Prices are scaled (max ≈ 0.59), with 0.26% low and 0.04% high outliers within product type, which are kept.
+
+**Sampling.** Full transactions, articles and customers. Images only for the 3 winners (9 photos; the full set is
+about 30 GB). The forecast does not use images, so its ranking is unaffected. The concepts see only each winner's
+three best-selling colours.

@@ -1,0 +1,52 @@
+{
+  "label": "top 0.1% of active styles by next-4-week units, per cutoff",
+  "share": 0.001,
+  "rounds": 135,
+  "params": {
+    "learning_rate": 0.05,
+    "num_leaves": 63,
+    "min_data_in_leaf": 100,
+    "feature_fraction": 0.8,
+    "bagging_fraction": 0.8,
+    "bagging_freq": 1,
+    "lambda_l2": 1.0,
+    "cat_smooth": 20,
+    "seed": 42,
+    "deterministic": true,
+    "force_row_wise": true,
+    "verbose": -1,
+    "num_threads": 0,
+    "objective": "binary",
+    "metric": "average_precision"
+  },
+  "features": [
+    "units_w1",
+    "units_w2",
+    "units_w4",
+    "units_w8",
+    "units_w12",
+    "trend_1_4",
+    "trend_4_12",
+    "buyers_w4",
+    "repeat_rate_w4",
+    "online_share_w4",
+    "n_active_articles_w4",
+    "avg_price_w4",
+    "discount",
+    "weeks_since_launch",
+    "is_new",
+    "ly_units_h",
+    "week_of_year",
+    "product_type_name",
+    "product_group_name",
+    "garment_group_name",
+    "index_group_name",
+    "colour_group_name",
+    "graphical_appearance_name"
+  ],
+  "train_cutoffs": [
+    "2019-09-25",
+    "2020-08-26"
+  ],
+  "calibrator_oof_rows": 371999
+}
