@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT))
 from PIL import Image, ImageDraw  # noqa: E402
 
 import config  # noqa: E402
-from forecasting import data, select  # noqa: E402
+from data_science import data, select  # noqa: E402
 from image.board import _fit, _font, _wrap, safe_save  # noqa: E402
 from scripts.finalize_run import display_name  # noqa: E402
 
@@ -70,7 +70,7 @@ def row(code: str, run_id: str, captions: dict) -> Image.Image:
     d.text((M, 12), f"#{fc['rank']} {display_name(fc['attributes']['prod_name'])} · "
                     f"{fc['attributes']['product_type_name']} · style {code}", font=_font(24, True), fill=INK)
 
-    # 1) sales curve (existing PNG from forecasting.select)
+    # 1) sales curve (existing PNG from data_science.select)
     y0 = 52
     img.paste(_fit(d_ / "sales_curve.png", 520, 250), (M, y0))
     d.text((M, y0 + 258), f"Forecast {fc['predicted_units_next_4w']:,.0f} units, 23 Sep–20 Oct 2020",

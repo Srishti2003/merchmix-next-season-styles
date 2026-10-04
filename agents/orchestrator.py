@@ -287,7 +287,7 @@ def main() -> None:
     ap.add_argument("--max-budget", type=float, default=15.0, help="stop if the (nominal) cost exceeds this, USD")
     a = ap.parse_args()
     if a.critique:
-        from forecasting import select
+        from data_science import select
         run_id, code, concept = a.critique
         rec = asyncio.run(critique_only(run_id, code, concept, str(select.reference_images(code)[0]), a.context))
         print(json.dumps({k: rec[k] for k in ("decision", "note")}, ensure_ascii=False, indent=1),

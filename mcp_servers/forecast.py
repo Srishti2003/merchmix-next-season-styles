@@ -1,7 +1,7 @@
 """MCP server 'forecast': top-k prediction, SHAP explanations, evaluation report.
 
-Thin FastMCP stdio wrapper over forecasting.select / forecasting.model — no business logic here.
-Models and predictions are cached per cutoff (outputs/models, outputs/cache); a cutoff that has
+Thin FastMCP stdio wrapper over data_science.select / data_science.model — no business logic here.
+Models and predictions are cached per cutoff (models, outputs/cache); a cutoff that has
 never been run trains once (~1 min), later calls are instant.
 Run: python mcp_servers/forecast.py
 """
@@ -19,7 +19,7 @@ from fastmcp.exceptions import ToolError  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
 import config  # noqa: E402
-from forecasting import features, model, select  # noqa: E402
+from data_science import features, model, select  # noqa: E402
 
 mcp = FastMCP("forecast", instructions=(
     "Forecasts next-4-week unit sales per style (product_code) with LightGBM and explains them with SHAP. "
@@ -136,7 +136,7 @@ def evaluation_report() -> str:
     10-cutoff rolling backtest (NDCG@50, precision@k, top-12 hit rate in top-50, WAPE)."""
     p = config.FIGURES_DIR / "eval_table.md"
     if not p.exists():
-        raise ToolError("No evaluation yet — run `python -m forecasting.model` first.")
+        raise ToolError("No evaluation yet — run `python -m data_science.model` first.")
     return p.read_text(encoding="utf-8")
 
 

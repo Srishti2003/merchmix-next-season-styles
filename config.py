@@ -21,7 +21,7 @@ CACHE_DIR: Path = OUT_DIR / "cache"
 EVIDENCE_DIR: Path = Path(os.getenv("HM_EVIDENCE_DIR") or OUT_DIR / "evidence")  # override for mock/test runs
 REFS_DIR: Path = OUT_DIR / "refs"
 FIGURES_DIR: Path = OUT_DIR / "figures"
-MODELS_DIR: Path = OUT_DIR / "models"
+MODELS_DIR: Path = ROOT / "models"
 
 # --- Forecast setup -----------------------------------------------------
 # Convention: weeks run Wednesday -> Tuesday. Every cutoff is a Wednesday and

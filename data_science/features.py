@@ -2,7 +2,7 @@
 
 A snapshot at cutoff ``c`` (a Wednesday) has one row per style that sold in the 12 weeks
 before ``c``. Features use only weeks with ``week_start < c``; the target is units in
-``[c, c + horizon)``. Everything is computed from the weekly style cache (forecasting.data),
+``[c, c + horizon)``. Everything is computed from the weekly style cache (data_science.data),
 so a full training set of ~45 cutoffs builds in well under a minute.
 
 Approximations (documented, because the cache is weekly):
@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from forecasting import data
+from data_science import data
 
 MOMENTUM_WEEKS: list[int] = [1, 2, 4, 8, 12]
 CAT_FEATURES: list[str] = [

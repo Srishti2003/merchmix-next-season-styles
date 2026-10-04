@@ -73,9 +73,11 @@ $c = "h-and-m-personalized-fashion-recommendations"
 .venv\Scripts\python scripts\convert_data.py --raw raw --out data
 
 # 3. Forecast: training snapshots, model + evaluation, top-3 + evidence + reference photos
-.venv\Scripts\python -m forecasting.features
-.venv\Scripts\python -m forecasting.model
-.venv\Scripts\python -m forecasting.select
+.venv\Scripts\python -m data_science.features
+.venv\Scripts\python -m data_science.model
+.venv\Scripts\python -m data_science.select
+.venv\Scripts\python -m data_science.train      # winner classifiers + final scores (outputs/classifier/)
+.venv\Scripts\python -m data_science.predict    # outputs/predictions.json for the API/frontend
 
 # 4. Agent run: --mock uses a local stand-in instead of the image model (no image API key)
 .venv\Scripts\python -m agents.orchestrator --cutoff 2020-09-22 --mock
@@ -93,16 +95,22 @@ Reference photos (`outputs/refs/`) are H&M/Kaggle data and are not included; ste
 ## Repository layout
 
 ```
-forecasting/        data (DuckDB), features, LightGBM model, evaluation, top-3 selection
+data_science/       data (DuckDB), features, regressor, winner classifier, evaluation, top-3 selection
+  train.py          training pipeline (features → classifiers → final scores; --with-regressor for the rest)
+  predict.py        writes outputs/predictions.json (scores, SHAP reasons, 26-week history, image paths)
+  notebooks/        EDA script and the executed extended-EDA notebook
+backend/            API service (next phase)
+frontend/           user interface (next phase)
+models/             LightGBM regressor/classifiers and isotonic calibrators
 mcp_servers/        FastMCP servers: retail, forecast, image
 agents/             orchestrator, in-process bookkeeping tools, sub-agent prompts
 image/              image generation (HF Space / Replicate / mock) with quota guards, CLIP, board layout
 skills_lib/         style-dna-brief template and validator (works without the SDK)
 .claude/skills/     the style-dna-brief skill
 scripts/            data conversion, MCP smoke test, image test, finalize, evidence sheet
-tests/              leakage, NDCG, quota guards, skill examples (21 tests)
-notebooks/          EDA script
-outputs/            board, evidence sheet, per-style evidence, figures, models, agent run
+tests/              leakage, NDCG, classification/calibration, quota guards, skill examples
+outputs/            generated_concepts.png (= final board), predictions.json, classifier reports, evidence,
+                    figures, agent run
 ```
 
 ## Limitations

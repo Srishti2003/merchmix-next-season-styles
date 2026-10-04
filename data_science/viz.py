@@ -1,4 +1,4 @@
-"""Shared matplotlib style (same palette as notebooks/01_eda.py)."""
+"""Shared matplotlib style (same palette as data_science/notebooks/01_eda.py)."""
 from __future__ import annotations
 
 import matplotlib

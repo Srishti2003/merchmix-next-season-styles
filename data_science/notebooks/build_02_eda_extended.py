@@ -1,6 +1,6 @@
-"""Build and execute notebooks/02_eda_extended.ipynb (customer behaviour + data quality), outputs saved.
+"""Build and execute data_science/notebooks/02_eda_extended.ipynb (customer behaviour + data quality), outputs saved.
 
-  python scripts/build_eda_extended.py
+  python data_science/notebooks/build_02_eda_extended.py
 
 Reads the Parquet files in HM_DATA_DIR and customers.csv from HM_RAW_DIR (default: the parent of HM_DATA_DIR).
 pandas/duckdb/matplotlib only.
@@ -12,8 +12,8 @@ from pathlib import Path
 import nbformat
 from nbclient import NotebookClient
 
-ROOT = Path(__file__).resolve().parents[1]
-NB = ROOT / "notebooks" / "02_eda_extended.ipynb"
+ROOT = Path(__file__).resolve().parents[2]
+NB = Path(__file__).resolve().parent / "02_eda_extended.ipynb"
 
 CELLS: list[tuple[str, str]] = [
     ("md", """# 02 — Extended EDA: customer behaviour and data quality
@@ -25,13 +25,13 @@ Run order: `scripts/convert_data.py` first; `customers.csv` is read from the raw
 from pathlib import Path
 
 warnings.filterwarnings("ignore")
-sys.path.insert(0, str(Path.cwd().parent))
+sys.path.insert(0, str(Path.cwd().parents[1]))  # notebook lives in data_science/notebooks/
 import duckdb
 import matplotlib.pyplot as plt
 import pandas as pd
 
 import config
-from forecasting import viz
+from data_science import viz
 
 viz.apply_style()
 pd.set_option("display.width", 140, "display.max_columns", 20)

@@ -69,7 +69,7 @@ scored by a model trained only on earlier data):
 ## 4. From forecast to concept (lineage)
 For each winner, `outputs/evidence/<code>/` holds `forecast.json` (rank, forecast, SHAP drivers, attributes) →
 `brief.json` (KEEP/CHANGE, validated by `skills_lib/style_dna.py`) → `generation_log.jsonl` (exact prompt,
-seed, model; input photos in `outputs/refs/` are H&M/Kaggle data, downloaded by `forecasting/select.py` and not included) → `critic.jsonl` (decision, CLIP scores, note) → `lineage.json` (links all of these, plus the
+seed, model; input photos in `outputs/refs/` are H&M/Kaggle data, downloaded by `data_science/select.py` and not included) → `critic.jsonl` (decision, CLIP scores, note) → `lineage.json` (links all of these, plus the
 board caption and the briefed changes the image did not render).
 
 | Winner | Forecast (next 4 wks) | Final concept | Critic | CLIP to own photos |
@@ -124,7 +124,7 @@ with a shape check (silhouette/edge comparison) instead of relying on CLIP.
 
 ## 9. Full-stack phase 1: success definition, winner classifier, extended EDA
 Numbers in this section come from `outputs/classifier/{eval_classifier.md, eval_classifier_top0.1pct.md,
-final_scores.md}` and `notebooks/02_eda_extended.ipynb`.
+final_scores.md}` and `data_science/notebooks/02_eda_extended.ipynb`.
 
 **Success definition.** A style is a *winner* if its units in the next 4 weeks rank in the **top 1% of styles
 active at that cutoff** (sold in the previous 12 weeks). The threshold is set per cutoff, not globally, so it moves
@@ -158,12 +158,17 @@ were already known there.
   0.00282 (backtest) and from 0.00271 to 0.00225 (validation). Raw probabilities above 0.4 were overconfident.
 - **Saturation:** at the final cutoff, P(top 1%) is ≥ 0.999 for 17 of the regressor's top-20 styles, so it can't
   separate them.
-- **Stricter top-0.1% label:** its probabilities spread out (10 distinct values among the regressor's top 20).
-  But isotonic calibration did not lower its backtest ECE (0.00041 raw vs 0.00044 calibrated), and on the
-  validation week it lost to last week × 4 (PR-AUC 0.456 vs 0.566). It was therefore not used.
-- **What the scores mean in the outputs:** the ranking stays the regressor's forecast units (published top-3).
-  `prediction_score` is the calibrated P(top 1%), with ties broken by forecast units, so all three winners show
-  1.000. `confidence_top1pct` carries the same value.
+- **Stricter top-0.1% label (about 20 winners per cutoff).** Its calibrated probabilities spread out where P(top 1%)
+  saturates: 10 distinct values among the regressor's top 20, from 0.038 to 1.000. Calibration changed its backtest
+  ECE from 0.00041 to 0.00044, which is within noise (2 standard errors of the per-cutoff change = 0.00006), and
+  improved Brier at 8 of 11 cutoffs. **This is the displayed `prediction_score`.**
+- **Its weakness:** on the validation week the top-0.1% classifier ranks worse than last week × 4 (PR-AUC 0.456 vs
+  0.566) and the regressor (0.514). In the backtest it is ahead of last week × 4 on PR-AUC at only 6 of 10
+  cutoffs. So it is a **relative-strength signal**: how likely the style is to be among the very top ~20, given
+  everything the model knows. It is not a better ranker.
+- **What the scores mean in the outputs:** the ranking and the top 3 stay the regressor's forecast units.
+  `prediction_score` is the calibrated P(top 0.1%): Pluto 1.000, Lucy 0.942, RICHIE 1.000. `confidence_top1pct` is
+  the calibrated P(top 1%), 1.000 for all three.
 
 **Why perennial basics such as Jade HW Skinny Denim and Cat Tee are not in the top 3.**
 - *The rule allows one style per garment group.* Jade is a trouser, and Pluto, also a trouser, has the higher

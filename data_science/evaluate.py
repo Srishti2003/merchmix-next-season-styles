@@ -209,8 +209,10 @@ def ece(y: np.ndarray, p: np.ndarray, bins: np.ndarray = CAL_BINS) -> float:
 
 class Isotonic:
     """Monotone (non-decreasing) calibration map fitted by pool-adjacent-violators; numpy only.
-    Tied x are pooled first; each fitted block is flat between its lowest and highest x, and prediction
-    interpolates linearly between blocks and clips outside the fitted range (like sklearn's IsotonicRegression)."""
+    Tied x are pooled first; adjacent blocks are pooled while not strictly increasing (equal neighbours too, which
+    leaves the fitted function unchanged), so only block boundaries are stored: each block is flat between its
+    lowest and highest x, and prediction interpolates linearly between blocks and clips outside the fitted range
+    (like sklearn's IsotonicRegression)."""
 
     def fit(self, x: np.ndarray, y: np.ndarray) -> "Isotonic":
         ux, inv, cnt = np.unique(np.asarray(x, float), return_inverse=True, return_counts=True)
@@ -218,7 +220,7 @@ class Isotonic:
         vals, wts, xlo, xhi = [], [], [], []
         for xi, yi, wi in zip(ux, uy, cnt.astype(float)):
             vals.append(yi); wts.append(wi); xlo.append(xi); xhi.append(xi)
-            while len(vals) > 1 and vals[-2] > vals[-1]:
+            while len(vals) > 1 and vals[-2] >= vals[-1]:
                 w = wts[-2] + wts[-1]
                 v = (vals[-2] * wts[-2] + vals[-1] * wts[-1]) / w
                 vals.pop(); wts.pop(); xlo.pop(); h = xhi.pop()

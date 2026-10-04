@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from forecasting.evaluate import ndcg_score, ranking_metrics
+from data_science.evaluate import ndcg_score, ranking_metrics
 
 
 def test_sklearn_docs_example() -> None:

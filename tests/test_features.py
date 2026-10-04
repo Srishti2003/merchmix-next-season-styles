@@ -1,4 +1,4 @@
-"""Leakage and sanity tests for forecasting.features."""
+"""Leakage and sanity tests for data_science.features."""
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 import config
-from forecasting import data, features
+from data_science import data, features
 
 CUTOFF = date(2020, 3, 4)
 

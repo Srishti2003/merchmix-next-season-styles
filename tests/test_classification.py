@@ -1,10 +1,10 @@
-"""Classification and calibration helpers in forecasting.evaluate (hand-worked expected values, no sklearn)."""
+"""Classification and calibration helpers in data_science.evaluate (hand-worked expected values, no sklearn)."""
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from forecasting.evaluate import (Isotonic, average_precision, brier, classification_metrics, ece,
+from data_science.evaluate import (Isotonic, average_precision, brier, classification_metrics, ece,
                                   precision_at_k, recall_at_k, reliability)
 
 
@@ -63,3 +63,13 @@ def test_isotonic_pools_tied_x_and_is_monotone() -> None:
 def test_isotonic_round_trip() -> None:
     iso = Isotonic().fit([1, 2, 3, 4], [1, 3, 2, 4])
     assert Isotonic.from_dict(iso.to_dict()).predict([2.2, 3.7]).tolist() == iso.predict([2.2, 3.7]).tolist()
+
+
+def test_isotonic_pools_equal_neighbours_without_changing_predictions() -> None:
+    """Long runs of the same value collapse to one flat block (2 knots), and predictions are unchanged."""
+    x = np.arange(1000, dtype=float)
+    y = np.r_[np.zeros(500), np.ones(500)]
+    iso = Isotonic().fit(x, y)
+    assert len(iso.x_) == 4  # [0, 499] at 0 and [500, 999] at 1
+    np.testing.assert_array_equal(iso.predict(x), y)
+    assert iso.predict([499.5])[0] == pytest.approx(0.5)  # linear between blocks

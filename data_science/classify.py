@@ -19,12 +19,12 @@ Ranking always uses the raw probability (isotonic maps create ties); ``predictio
 
 Two labels are trained: top 1% (default) and a stricter top 0.1% (``--share 0.001``). Each run writes
 outputs/classifier/{eval_classifier, per_cutoff, reliability, oof_predictions, scores_clf}<suffix> and
-outputs/models/{lgbm_clf<suffix>_final_20200923.txt, isotonic_clf<suffix>_20200923.json, clf<suffix>_meta.json}
+models/{lgbm_clf<suffix>_final_20200923.txt, isotonic_clf<suffix>_20200923.json, clf<suffix>_meta.json}
 (suffix '' for top 1%, '_top0.1pct' for top 0.1%). ``--combine`` then keeps the regressor's ranking (published
 top-3), picks prediction_score (P(top 0.1%) if usable, else P(top 1%)), keeps P(top 1%) as confidence_top1pct, and
 writes outputs/classifier/{scores_final.parquet, final_scores.md}. The regressor's outputs are never touched.
 
-  python -m forecasting.classify && python -m forecasting.classify --share 0.001 && python -m forecasting.classify --combine
+  python -m data_science.classify && python -m data_science.classify --share 0.001 && python -m data_science.classify --combine
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from forecasting import evaluate, features, model
+from data_science import evaluate, features, model
 
 WINNER_SHARE = 0.01
 STRICT_SHARE = 0.001
@@ -165,7 +165,7 @@ def reliability_plot(scored: pd.DataFrame, path) -> pd.DataFrame:
     """Pooled reliability curve (raw vs calibrated) over the scored cutoffs; returns the two tables."""
     import matplotlib.pyplot as plt
 
-    from forecasting import viz
+    from data_science import viz
 
     viz.apply_style()
     y = scored["y"].to_numpy()
@@ -208,7 +208,7 @@ def paths(share: float) -> dict[str, Path]:
 def score_final(all_df: pd.DataFrame, rounds: int, cal: evaluate.Isotonic) -> tuple[pd.DataFrame, lgb.Booster]:
     """Train on every cutoff with a fully observed target (2019-09-25 .. 2020-08-26) and score all styles
     active at FINAL_CUTOFF (forecast window 2020-09-23 .. 2020-10-20). Adds the regressor's unit forecast."""
-    from forecasting import data, select
+    from data_science import data, select
 
     c = pd.Timestamp(config.FINAL_CUTOFF)
     booster = fit(history_for(all_df, c), rounds)
@@ -395,7 +395,8 @@ def combine(strict: float = STRICT_SHARE, top_n: int = 20) -> pd.DataFrame:
     Ranking stays the regressor's forecast units (the published top-3). prediction_score = calibrated
     P(top ``strict``) when it is usable, else calibrated P(top 1%) (ties broken by forecast units). Usable means:
     among the regressor's top ``top_n`` it is not saturated (at most 3 values >= 0.999 and at least 10 distinct
-    values), its isotonic calibration does not raise the backtest ECE, and every cutoff has >= 10 winners.
+    values), its isotonic calibration does not raise the backtest ECE by more than 2 standard errors of the
+    per-cutoff ECE change (noise), and every cutoff has >= 10 winners.
     """
     s1 = pd.read_parquet(paths(WINNER_SHARE)["scores"])
     s2 = pd.read_parquet(paths(strict)["scores"])[["product_code", "p_raw", "p_cal"]]
@@ -408,8 +409,10 @@ def combine(strict: float = STRICT_SHARE, top_n: int = 20) -> pd.DataFrame:
     n_sat = int((top["p_strict"] >= 0.999).sum())
     n_distinct = int(top["p_strict"].round(4).nunique())
     ece_raw, ece_cal = bt2["ece_raw"].mean(), bt2["ece_cal"].mean()
+    d = bt2["ece_cal"] - bt2["ece_raw"]
+    ece_se = float(d.std() / np.sqrt(len(d)))  # standard error of the mean per-cutoff ECE change
     min_pos = int(clf2["n_winners"].min())
-    checks = {"not saturated": n_sat <= 3 and n_distinct >= 10, "calibration does not raise ECE": ece_cal <= ece_raw,
+    checks = {"not saturated": n_sat <= 3 and n_distinct >= 10, "calibration does not raise ECE beyond noise": ece_cal - ece_raw <= 2 * ece_se,
               ">= 10 winners per cutoff": min_pos >= 10}
     use_strict = all(checks.values())
     strict_label = f"top {strict * 100:g}%"
@@ -428,7 +431,9 @@ def combine(strict: float = STRICT_SHARE, top_n: int = 20) -> pd.DataFrame:
           f"- Among the regressor's top {top_n}: {n_sat} styles at ≥ 0.999, {n_distinct} distinct values "
           f"(range {top['p_strict'].min():.3f}–{top['p_strict'].max():.3f}) → "
           f"{'spread out' if checks['not saturated'] else 'saturated'}.",
-          f"- Backtest ECE raw {ece_raw:.5f} vs calibrated {ece_cal:.5f}.",
+          f"- Backtest ECE raw {ece_raw:.5f} vs calibrated {ece_cal:.5f}: change {ece_cal - ece_raw:+.5f}, "
+          f"2 standard errors of the per-cutoff change = {2 * ece_se:.5f} → "
+          f"{'within noise' if checks['calibration does not raise ECE beyond noise'] else 'worse beyond noise'}.",
           f"- Fewest winners at any scored cutoff: {min_pos}.",
           f"- Decision: prediction_score = **{df['score_source'].iat[0]}**"
           + ("" if use_strict else " (ties broken by forecast units)") + "; confidence_top1pct = calibrated P(top 1%).",

@@ -1,10 +1,10 @@
-"""Winner label threshold and calibration leakage in forecasting.classify (synthetic data, no Parquet needed)."""
+"""Winner label threshold and calibration leakage in data_science.classify (synthetic data, no Parquet needed)."""
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
-from forecasting import classify
+from data_science import classify
 
 
 def _snap(cutoff: str, units: list[float]) -> pd.DataFrame:

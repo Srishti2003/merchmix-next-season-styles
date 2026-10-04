@@ -1,6 +1,6 @@
 """LightGBM regressor / ranker training, persistence and SHAP explanations.
 
-Two candidates, both trained on the weekly snapshots from forecasting.features:
+Two candidates, both trained on the weekly snapshots from data_science.features:
 - regressor: objective='regression' on the *uplift over the naive run-rate*:
              y_log - log1p(4 x last-week units), weighted by 1 + log1p(units_w4) so the high-volume
              styles we rank at the top count more. Prediction adds the run-rate back -> unit forecast.
@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from forecasting import data, evaluate, features
+from data_science import data, evaluate, features
 
 RANKER_PATH = config.MODELS_DIR / "lgbm_ranker.txt"  # written only if the ranker ever wins
 REG_PATH = config.MODELS_DIR / "lgbm_reg.txt"
@@ -264,7 +264,7 @@ def main() -> None:
 
     import matplotlib.pyplot as plt
 
-    from forecasting import viz
+    from data_science import viz
 
     train = pd.read_parquet(features.TRAIN_PATH)
     valid = pd.read_parquet(features.VALID_PATH)
