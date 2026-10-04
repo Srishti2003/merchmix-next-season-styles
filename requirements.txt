@@ -15,3 +15,6 @@ torch
 python-dotenv
 kaggle
 pytest
+fastapi
+uvicorn
+httpx

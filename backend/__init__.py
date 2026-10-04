@@ -1,1 +1,1 @@
-"""API service over outputs/predictions.json (FastAPI). Built in the next phase."""
+"""FastAPI service over outputs/predictions.json (see API.md)."""

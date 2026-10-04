@@ -795,7 +795,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0706016/0706016001.jpg"
+        ],
         "catalogue": [
           "images/070/0706016001.jpg",
           "images/070/0706016003.jpg",
@@ -980,7 +982,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0456163/0456163060.jpg"
+        ],
         "catalogue": [
           "images/045/0456163060.jpg",
           "images/045/0456163086.jpg",
@@ -1165,7 +1169,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0573085/0573085043.jpg"
+        ],
         "catalogue": [
           "images/057/0573085043.jpg",
           "images/057/0573085028.jpg",
@@ -1350,7 +1356,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0685813/0685813001.jpg"
+        ],
         "catalogue": [
           "images/068/0685813001.jpg",
           "images/068/0685813037.jpg",
@@ -1465,7 +1473,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0884319/0884319005.jpg"
+        ],
         "catalogue": [
           "images/088/0884319005.jpg",
           "images/088/0884319001.jpg",
@@ -1560,7 +1570,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0915529/0915529001.jpg"
+        ],
         "catalogue": [
           "images/091/0915529001.jpg",
           "images/091/0915529003.jpg"
@@ -1744,7 +1756,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0673677/0673677002.jpg"
+        ],
         "catalogue": [
           "images/067/0673677002.jpg",
           "images/067/0673677023.jpg",
@@ -1819,7 +1833,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0924243/0924243001.jpg"
+        ],
         "catalogue": [
           "images/092/0924243001.jpg",
           "images/092/0924243002.jpg"
@@ -2003,7 +2019,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0714790/0714790020.jpg"
+        ],
         "catalogue": [
           "images/071/0714790020.jpg",
           "images/071/0714790021.jpg",
@@ -2073,7 +2091,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0873279/0873279001.jpg"
+        ],
         "catalogue": [
           "images/087/0873279001.jpg",
           "images/087/0873279003.jpg",
@@ -2258,7 +2278,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0715624/0715624001.jpg"
+        ],
         "catalogue": [
           "images/071/0715624001.jpg",
           "images/071/0715624010.jpg",
@@ -2443,7 +2465,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0803757/0803757001.jpg"
+        ],
         "catalogue": [
           "images/080/0803757001.jpg",
           "images/080/0803757004.jpg",
@@ -2548,7 +2572,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0914441/0914441004.jpg"
+        ],
         "catalogue": [
           "images/091/0914441004.jpg",
           "images/091/0914441001.jpg",
@@ -2653,7 +2679,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0863595/0863595006.jpg"
+        ],
         "catalogue": [
           "images/086/0863595006.jpg",
           "images/086/0863595004.jpg",
@@ -2748,7 +2776,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0863646/0863646004.jpg"
+        ],
         "catalogue": [
           "images/086/0863646004.jpg",
           "images/086/0863646001.jpg",
@@ -2933,7 +2963,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0610776/0610776071.jpg"
+        ],
         "catalogue": [
           "images/061/0610776002.jpg",
           "images/061/0610776001.jpg",
@@ -3118,7 +3150,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0448509/0448509014.jpg"
+        ],
         "catalogue": [
           "images/044/0448509014.jpg",
           "images/044/0448509001.jpg",
@@ -3228,7 +3262,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0918292/0918292001.jpg"
+        ],
         "catalogue": [
           "images/091/0918292001.jpg",
           "images/091/0918292004.jpg",
@@ -3413,7 +3449,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0568601/0568601007.jpg"
+        ],
         "catalogue": [
           "images/056/0568601006.jpg",
           "images/056/0568601007.jpg",
@@ -3598,7 +3636,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0562245/0562245102.jpg"
+        ],
         "catalogue": [
           "images/056/0562245018.jpg",
           "images/056/0562245102.jpg",
@@ -3783,7 +3823,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0677930/0677930023.jpg"
+        ],
         "catalogue": [
           "images/067/0677930023.jpg",
           "images/067/0677930086.jpg",
@@ -3888,7 +3930,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0865929/0865929003.jpg"
+        ],
         "catalogue": [
           "images/086/0865929003.jpg",
           "images/086/0865929014.jpg",
@@ -4073,7 +4117,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0783346/0783346001.jpg"
+        ],
         "catalogue": [
           "images/078/0783346001.jpg",
           "images/078/0783346023.jpg",
@@ -4258,7 +4304,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0372860/0372860002.jpg"
+        ],
         "catalogue": [
           "images/037/0372860002.jpg",
           "images/037/0372860001.jpg",
@@ -4443,7 +4491,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0806388/0806388003.jpg"
+        ],
         "catalogue": [
           "images/080/0806388003.jpg",
           "images/080/0806388001.jpg",
@@ -4628,7 +4678,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0717490/0717490064.jpg"
+        ],
         "catalogue": [
           "images/071/0717490064.jpg",
           "images/071/0717490010.jpg",
@@ -4813,7 +4865,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0678942/0678942001.jpg"
+        ],
         "catalogue": [
           "images/067/0678942001.jpg",
           "images/067/0678942032.jpg",
@@ -4908,7 +4962,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0874754/0874754002.jpg"
+        ],
         "catalogue": [
           "images/087/0874754002.jpg",
           "images/087/0874754001.jpg",
@@ -5093,7 +5149,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0799365/0799365027.jpg"
+        ],
         "catalogue": [
           "images/079/0799365027.jpg",
           "images/079/0799365001.jpg",
@@ -5278,7 +5336,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0579541/0579541001.jpg"
+        ],
         "catalogue": [
           "images/057/0579541001.jpg",
           "images/057/0579541075.jpg",
@@ -5463,7 +5523,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0730683/0730683050.jpg"
+        ],
         "catalogue": [
           "images/073/0730683050.jpg",
           "images/073/0730683054.jpg",
@@ -5553,7 +5615,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0910601/0910601001.jpg"
+        ],
         "catalogue": [
           "images/091/0910601002.jpg",
           "images/091/0910601001.jpg"
@@ -5642,7 +5706,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0911870/0911870003.jpg"
+        ],
         "catalogue": [
           "images/091/0911870004.jpg",
           "images/091/0911870001.jpg",
@@ -5827,7 +5893,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0804992/0804992014.jpg"
+        ],
         "catalogue": [
           "images/080/0804992034.jpg",
           "images/080/0804992014.jpg",
@@ -6012,7 +6080,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0685816/0685816002.jpg"
+        ],
         "catalogue": [
           "images/068/0685816002.jpg",
           "images/068/0685816001.jpg",
@@ -6197,7 +6267,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0850917/0850917001.jpg"
+        ],
         "catalogue": [
           "images/085/0850917001.jpg",
           "images/085/0850917003.jpg",
@@ -6382,7 +6454,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0865799/0865799006.jpg"
+        ],
         "catalogue": [
           "images/086/0865799006.jpg",
           "images/086/0865799005.jpg",
@@ -6567,7 +6641,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0827968/0827968001.jpg"
+        ],
         "catalogue": [
           "images/082/0827968001.jpg",
           "images/082/0827968004.jpg",
@@ -6672,7 +6748,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0871517/0871517008.jpg"
+        ],
         "catalogue": [
           "images/087/0871517008.jpg",
           "images/087/0871517013.jpg",
@@ -6857,7 +6935,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0547780/0547780003.jpg"
+        ],
         "catalogue": [
           "images/054/0547780003.jpg",
           "images/054/0547780001.jpg",
@@ -7042,7 +7122,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0791587/0791587001.jpg"
+        ],
         "catalogue": [
           "images/079/0791587001.jpg",
           "images/079/0791587018.jpg",
@@ -7122,7 +7204,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0867969/0867969008.jpg"
+        ],
         "catalogue": [
           "images/086/0867969003.jpg",
           "images/086/0867969002.jpg",
@@ -7197,7 +7281,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0919273/0919273001.jpg"
+        ],
         "catalogue": [
           "images/091/0919273002.jpg",
           "images/091/0919273001.jpg",
@@ -7382,7 +7468,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0759814/0759814009.jpg"
+        ],
         "catalogue": [
           "images/075/0759814009.jpg",
           "images/075/0759814011.jpg",
@@ -7567,7 +7655,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0536139/0536139006.jpg"
+        ],
         "catalogue": [
           "images/053/0536139006.jpg",
           "images/053/0536139068.jpg",
@@ -7652,7 +7742,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0872537/0872537004.jpg"
+        ],
         "catalogue": [
           "images/087/0872537004.jpg",
           "images/087/0872537001.jpg",
@@ -7837,7 +7929,9 @@
         }
       ],
       "images": {
-        "reference": [],
+        "reference": [
+          "outputs/refs/0767423/0767423011.jpg"
+        ],
         "catalogue": [
           "images/076/0767423011.jpg",
           "images/076/0767423013.jpg",
@@ -14303,7 +14397,7 @@
       "images": {
         "reference": [],
         "catalogue": [
-          "images/088/0882900004.jpg",
+          "images/088/0882900008.jpg",
           "images/088/0882900007.jpg",
           "images/088/0882900013.jpg"
         ],

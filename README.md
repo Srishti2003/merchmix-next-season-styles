@@ -78,6 +78,8 @@ $c = "h-and-m-personalized-fashion-recommendations"
 .venv\Scripts\python -m data_science.select
 .venv\Scripts\python -m data_science.train      # winner classifiers + final scores (outputs/classifier/)
 .venv\Scripts\python -m data_science.predict    # outputs/predictions.json for the API/frontend
+.venv\Scripts\python scripts\fetch_list_photos.py --n 50   # list photos (Kaggle, not committed)
+.venv\Scripts\uvicorn backend.api:app --host 0.0.0.0 --port 8000   # API, docs at /docs (see API.md)
 
 # 4. Agent run: --mock uses a local stand-in instead of the image model (no image API key)
 .venv\Scripts\python -m agents.orchestrator --cutoff 2020-09-22 --mock
@@ -99,7 +101,7 @@ data_science/       data (DuckDB), features, regressor, winner classifier, evalu
   train.py          training pipeline (features → classifiers → final scores; --with-regressor for the rest)
   predict.py        writes outputs/predictions.json (scores, SHAP reasons, 26-week history, image paths)
   notebooks/        EDA script and the executed extended-EDA notebook
-backend/            API service (next phase)
+backend/            FastAPI service: api.py (HTTP), model_service.py (predictions), schemas.py — see API.md
 frontend/           user interface (next phase)
 models/             LightGBM regressor/classifiers and isotonic calibrators
 mcp_servers/        FastMCP servers: retail, forecast, image
