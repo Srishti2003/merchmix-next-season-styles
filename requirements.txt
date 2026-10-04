@@ -9,6 +9,7 @@ pillow
 fastmcp
 claude-agent-sdk
 replicate
+gradio_client
 open_clip_torch
 torch
 python-dotenv

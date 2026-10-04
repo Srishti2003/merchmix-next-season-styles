@@ -209,20 +209,24 @@ def ece(y: np.ndarray, p: np.ndarray, bins: np.ndarray = CAL_BINS) -> float:
 
 class Isotonic:
     """Monotone (non-decreasing) calibration map fitted by pool-adjacent-violators; numpy only.
-    Prediction interpolates linearly between fitted block thresholds (like sklearn's IsotonicRegression)."""
+    Tied x are pooled first; each fitted block is flat between its lowest and highest x, and prediction
+    interpolates linearly between blocks and clips outside the fitted range (like sklearn's IsotonicRegression)."""
 
     def fit(self, x: np.ndarray, y: np.ndarray) -> "Isotonic":
-        o = np.argsort(np.asarray(x, float), kind="stable")
-        xs, ys = np.asarray(x, float)[o], np.asarray(y, float)[o]
-        vals, wts, xhi = [], [], []
-        for xi, yi in zip(xs, ys):
-            vals.append(yi); wts.append(1.0); xhi.append(xi)
+        ux, inv, cnt = np.unique(np.asarray(x, float), return_inverse=True, return_counts=True)
+        uy = np.bincount(inv, weights=np.asarray(y, float)) / cnt  # mean y per distinct x
+        vals, wts, xlo, xhi = [], [], [], []
+        for xi, yi, wi in zip(ux, uy, cnt.astype(float)):
+            vals.append(yi); wts.append(wi); xlo.append(xi); xhi.append(xi)
             while len(vals) > 1 and vals[-2] > vals[-1]:
                 w = wts[-2] + wts[-1]
                 v = (vals[-2] * wts[-2] + vals[-1] * wts[-1]) / w
-                vals.pop(); wts.pop(); h = xhi.pop()
+                vals.pop(); wts.pop(); xlo.pop(); h = xhi.pop()
                 vals[-1], wts[-1], xhi[-1] = v, w, h
-        self.x_, self.y_ = np.array(xhi), np.array(vals)
+        # knots at both ends of each block (one knot when a block covers a single x)
+        kx = [k for lo, hi in zip(xlo, xhi) for k in ((lo,) if lo == hi else (lo, hi))]
+        ky = [v for lo, hi, v in zip(xlo, xhi, vals) for _ in ((lo,) if lo == hi else (lo, hi))]
+        self.x_, self.y_ = np.array(kx), np.array(ky)
         return self
 
     def predict(self, x: np.ndarray) -> np.ndarray:
