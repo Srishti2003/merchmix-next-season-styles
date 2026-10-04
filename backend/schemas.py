@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -42,9 +42,14 @@ class StyleSummary(BaseModel):
     category: Category
     sales_history: ShortHistory
     image_url: str | None = Field(description="catalogue photo of the best-selling colourway; null if not downloaded")
+    actual_units: int | None = Field(None, description="observed units in the window (observed seasons only)")
+    actual_rank: int | None = Field(None, description="rank by observed units (observed seasons only)")
 
 
 class TopStylesResponse(BaseModel):
+    season: str
+    season_label: str
+    observed: bool = Field(description="true when the forecast window is in the data (actuals available)")
     cutoff: date = Field(description="prediction cutoff: data up to the day before is used")
     forecast_window: ForecastWindow
     total: int = Field(description="number of styles available in the list")
@@ -53,6 +58,7 @@ class TopStylesResponse(BaseModel):
     styles: list[StyleSummary]
 
     model_config = ConfigDict(json_schema_extra={"examples": [{
+        "season": "AW2020", "season_label": "Autumn/Winter 2020 (forecast)", "observed": False,
         "cutoff": "2020-09-23", "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
         "total": 200, "limit": 1, "offset": 0,
         "styles": [{"style_id": "0751471", "name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
@@ -108,7 +114,16 @@ class Concept(BaseModel):
     critic: CriticStatus
 
 
+class Actual(BaseModel):
+    units: int | None
+    rank: int | None = Field(description="rank by observed units among all scored styles")
+    weekly: list[WeekUnits]
+
+
 class StyleDetail(BaseModel):
+    season: str
+    cutoff: date
+    forecast_window: ForecastWindow
     style_id: str
     name: str | None
     rank: int | None
@@ -124,9 +139,11 @@ class StyleDetail(BaseModel):
     sales_history_26w: list[WeekSales] = Field(description="up to 26 weeks before the cutoff (from first sale)")
     image_url: str | None
     reference_image_urls: list[str] = Field(description="downloaded catalogue photos of this style")
-    concept: Concept | None = Field(description="the generated next-season concept (top-3 only)")
+    concept: Concept | None = Field(description="the generated next-season concept (AW2020 top-3 only)")
+    actual: Actual | None = Field(None, description="observed units in the window (observed seasons only)")
 
     model_config = ConfigDict(json_schema_extra={"examples": [{
+        "season": "AW2020", "cutoff": "2020-09-23", "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
         "style_id": "0751471", "name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
         "prediction_score": 1.0, "confidence_top1pct": 1.0, "p_top0_1pct": 1.0, "forecast_units": 7417.3,
         "category": {"product_type": "Trousers", "garment_group": "Trousers"},
@@ -161,16 +178,63 @@ class Health(BaseModel):
     forecast_window: ForecastWindow
     n_styles: int = Field(description="styles available through the API")
     n_styles_scored: int = Field(description="styles scored by the model at the cutoff")
+    seasons: list[str] = Field(description="season ids available on /seasons")
 
     model_config = ConfigDict(json_schema_extra={"examples": [{
         "status": "ok", "model_version": "regressor-20200923-r94+clf-top1pct-r294+clf-top0.1pct-r135",
         "prediction_cutoff": "2020-09-23", "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
-        "n_styles": 200, "n_styles_scored": 20318}]})
+        "n_styles": 200, "n_styles_scored": 20318, "seasons": ["AW2020", "SS2020"]}]})
+
+
+class SeasonInfo(BaseModel):
+    id: str
+    label: str
+    cutoff: date
+    forecast_window: ForecastWindow
+    observed: bool = Field(description="true when actual units are available (backtest season)")
+    has_concepts: bool
+    n_styles: int
+    default: bool
+
+
+class SeasonsResponse(BaseModel):
+    seasons: list[SeasonInfo]
+
+    model_config = ConfigDict(json_schema_extra={"examples": [{"seasons": [
+        {"id": "AW2020", "label": "Autumn/Winter 2020 (forecast)", "cutoff": "2020-09-23",
+         "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"}, "observed": False, "has_concepts": True,
+         "n_styles": 200, "default": True},
+        {"id": "SS2020", "label": "Spring/Summer 2020 (backtest)", "cutoff": "2020-05-27",
+         "forecast_window": {"start": "2020-05-27", "end": "2020-06-23"}, "observed": True, "has_concepts": False,
+         "n_styles": 200, "default": False}]}]})
+
+
+class ModelSummary(BaseModel):
+    success_definition: str
+    horizon: str
+    stock_caveat: str
+    ranking: str
+    regressor: dict[str, Any] = Field(description="validation week and 10-cutoff backtest vs baselines")
+    classifier_top1pct: dict[str, Any]
+    classifier_top0_1pct: dict[str, Any] = Field(alias="classifier_top0.1pct", serialization_alias="classifier_top0.1pct")
+    seasonal: dict[str, Any] = Field(description="category mix of the predicted top-100, SS2020 vs AW2020")
+
+    model_config = ConfigDict(populate_by_name=True, json_schema_extra={"examples": [{
+        "success_definition": "A winner is a style whose units over the next 4 weeks rank in the top 1% …",
+        "horizon": "4 weeks: …", "stock_caveat": "There is no stock data, so sales are censored demand …",
+        "ranking": "Styles are ranked by the regressor's forecast units; …",
+        "regressor": {"backtest": [{"method": "LightGBM regressor", "ndcg@50": {"mean": 0.924, "std": 0.031}}]},
+        "classifier_top1pct": {"calibration": {"ece_raw": 0.00361, "ece_calibrated": 0.00282},
+                               "reliability_plot_url": "/images/classifier/reliability.png"},
+        "classifier_top0.1pct": {"methods": [{"method": "LightGBM classifier", "backtest": {"pr_auc": 0.807}}]},
+        "seasonal": {"category_mix": [{"product_group": "Swimwear", "SS2020": 0.38, "AW2020": 0.0,
+                                       "change_pts": -38.1}], "ss2020_top10_hits": 7}}]})
 
 
 class ErrorResponse(BaseModel):
     detail: str
     style_id: str | None = None
+    season: str | None = None
 
     model_config = ConfigDict(json_schema_extra={"examples": [
         {"detail": "Style 0000001 is not in the published predictions (top 200 styles by forecast units).",

@@ -1,24 +1,29 @@
-"""Write outputs/predictions.json: the ranked styles at the final cutoff, ready for the API and the frontend.
+"""Write the prediction files the API and frontend read: ranked styles per season, nothing retrained.
 
-  python -m data_science.predict            # top 200 styles by forecast units (default)
-  python -m data_science.predict --n 500
+  python -m data_science.predict                    # AW2020: outputs/predictions.json (cutoff 2020-09-23)
+  python -m data_science.predict --season SS2020    # SS2020: outputs/predictions_SS2020.json (cutoff 2020-05-27)
+  python -m data_science.predict --n 500            # more styles (default: top 200 by forecast units)
 
-Inputs (nothing is retrained and no published file is rewritten):
+AW2020 (the forecast; the target window 2020-09-23 → 2020-10-20 is after the data):
 - outputs/classifier/scores_final.parquet (data_science.classify --combine): forecast units from the published final
-  regressor, calibrated classifier probabilities, the top-3 rank;
-- models/lgbm_final_20200923.txt (published final regressor) for the SHAP reasons of styles without evidence;
-- outputs/evidence/<code>/{forecast.json, lineage.json} for the 3 winners (published SHAP drivers, final concept);
-- the weekly style cache for the 26-week sales history.
+  regressor models/lgbm_final_20200923.txt, calibrated classifier probabilities, the top-3 rank;
+- outputs/evidence/<code>/{forecast.json, lineage.json} for the 3 winners (published SHAP drivers, final concept).
+SS2020 (a backtest season; the window 2020-05-27 → 2020-06-23 is observed, so actual units are included):
+- forecast units from the published summer regressor models/lgbm_final_20200527.txt (via select.get_predictions);
+- classifier probabilities = the out-of-fold backtest predictions at 2020-05-27 (models trained on cutoffs up to
+  2020-04-29, isotonic maps fitted on earlier folds only), so no information from the window is used;
+- no concepts or new images.
 
 Per style: style_id (= product_code), rank (1-3 for the selected winners, else null), forecast_rank (position by
 forecast units among all scored styles), prediction_score, confidence_top1pct, p_top0_1pct, forecast_units,
-attributes, recent performance, shap_reasons, sales_history_26w and image paths (relative to the repo root).
+attributes, recent performance, shap_reasons, sales_history_26w, image paths (relative to the repo root) and, for
+observed seasons, actual units and rank.
 """
 from __future__ import annotations
 
 import json
 import math
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -26,7 +31,14 @@ import pandas as pd
 import config
 from data_science import classify, data, features, model, select
 
-OUT_PATH = config.OUT_DIR / "predictions.json"
+SEASONS: dict[str, dict] = {
+    "AW2020": {"label": "Autumn/Winter 2020 (forecast)", "cutoff": config.FINAL_CUTOFF,
+               "path": config.OUT_DIR / "predictions.json"},
+    "SS2020": {"label": "Spring/Summer 2020 (backtest)", "cutoff": date(2020, 5, 27),
+               "path": config.OUT_DIR / "predictions_SS2020.json"},
+}
+DEFAULT_SEASON = "AW2020"
+OUT_PATH = SEASONS[DEFAULT_SEASON]["path"]
 SCORES_PATH = classify.OUT_DIR / "scores_final.parquet"
 HISTORY_WEEKS = 26
 
@@ -63,53 +75,90 @@ def _evidence(code: str) -> tuple[dict | None, dict | None]:
 
 def _images(code: str, lineage: dict | None, catalogue: list[str]) -> dict:
     concept = lineage["final_concept"] if lineage else None
+    curve = config.EVIDENCE_DIR / code / "sales_curve.png"
     return {
         "reference": [_rel(p) for p in select.reference_images(code)],  # local only (Kaggle photos, not committed)
         "catalogue": catalogue,                                         # Kaggle paths of the top-colour articles
         "concept": concept["path"] if concept else None,
         "concept_reference": concept.get("reference_image") if concept else None,
-        "sales_curve": _rel(config.EVIDENCE_DIR / code / "sales_curve.png")
-        if (config.EVIDENCE_DIR / code / "sales_curve.png").exists() else None,
+        "sales_curve": _rel(curve) if lineage and curve.exists() else None,
     }
 
 
-def _model_info() -> dict:
+def _model_info(cutoff: date) -> dict:
     """Model files behind the scores, and a short version string for the API's /health."""
     reg = json.loads(model.META_PATH.read_text())
     clf = {s: json.loads(classify.paths(s)["meta"].read_text()) for s in (classify.WINNER_SHARE, classify.STRICT_SHARE)}
-    files = {"regressor": _rel(config.MODELS_DIR / f"lgbm_final_{config.FINAL_CUTOFF:%Y%m%d}.txt"),
-             **{f"classifier_top{s * 100:g}pct": _rel(classify.paths(s)["model"]) for s in clf},
-             **{f"calibrator_top{s * 100:g}pct": _rel(classify.paths(s)["calibrator"]) for s in clf}}
-    version = (f"regressor-{config.FINAL_CUTOFF:%Y%m%d}-r{reg['best_iterations']['regressor']}"
+    reg_file = config.MODELS_DIR / f"lgbm_final_{cutoff:%Y%m%d}.txt"
+    version = (f"regressor-{cutoff:%Y%m%d}-r{reg['best_iterations']['regressor']}"
                f"+clf-top1pct-r{clf[classify.WINNER_SHARE]['rounds']}"
                f"+clf-top0.1pct-r{clf[classify.STRICT_SHARE]['rounds']}")
+    if cutoff == config.FINAL_CUTOFF:
+        files = {"regressor": _rel(reg_file),
+                 **{f"classifier_top{s * 100:g}pct": _rel(classify.paths(s)["model"]) for s in clf},
+                 **{f"calibrator_top{s * 100:g}pct": _rel(classify.paths(s)["calibrator"]) for s in clf}}
+    else:
+        version += "-oof"
+        files = {"regressor": _rel(reg_file),
+                 **{f"classifier_top{s * 100:g}pct": f"out-of-fold backtest prediction ({_rel(classify.paths(s)['oof'])})"
+                    for s in clf}}
     return {"version": version, "files": files}
 
 
-def build(n: int = 200) -> dict:
-    cutoff = config.FINAL_CUTOFF
-    scores = pd.read_parquet(SCORES_PATH).sort_values("forecast_units", ascending=False, ignore_index=True)
+def _final_scores() -> pd.DataFrame:
+    """AW2020: the combined final scores (regressor units + calibrated classifier probabilities + top-3 rank)."""
+    return pd.read_parquet(SCORES_PATH)
+
+
+def _backtest_scores(cutoff: date) -> pd.DataFrame:
+    """Observed season: published per-cutoff regressor forecast + out-of-fold calibrated classifier probabilities."""
+    c = pd.Timestamp(cutoff)
+    preds = select.get_predictions(cutoff)
+    df = preds[["product_code", "pred_units", "units_w2", "garment_group_name", "y_units"]].rename(
+        columns={"pred_units": "forecast_units"})
+    for share, col in ((classify.WINNER_SHARE, "confidence_top1pct"), (classify.STRICT_SHARE, "p_strict")):
+        oof = pd.read_parquet(classify.paths(share)["oof"])
+        oof = oof[(oof["cutoff"] == c) & oof["p_cal"].notna()][["product_code", "p_cal"]]
+        if oof.empty:
+            raise ValueError(f"No calibrated out-of-fold classifier predictions at {cutoff}.")
+        df = df.merge(oof.rename(columns={"p_cal": col}), on="product_code", how="left")
+    df["prediction_score"] = df["p_strict"]
+    df["score_source"] = f"calibrated P(top {classify.STRICT_SHARE * 100:g}%)"
+    df = df.sort_values("forecast_units", ascending=False, ignore_index=True)
+    top3 = classify.select_top_k(df)
+    df["rank"] = df["product_code"].map(dict(zip(top3["product_code"], top3["rank"])))
+    df["actual_rank"] = df["y_units"].rank(method="min", ascending=False)
+    return df
+
+
+def build(season: str = DEFAULT_SEASON, n: int = 200) -> dict:
+    spec = SEASONS[season]
+    cutoff = spec["cutoff"]
+    final = cutoff == config.FINAL_CUTOFF
+    scores = _final_scores() if final else _backtest_scores(cutoff)
+    scores = scores.sort_values("forecast_units", ascending=False, ignore_index=True)
     scores["forecast_rank"] = range(1, len(scores) + 1)
     top = scores[(scores["forecast_rank"] <= n) | scores["rank"].notna()]
     snap = features.make_snapshot(cutoff).set_index("product_code")
     attrs = data.style_attributes(as_of=cutoff).set_index("product_code")
     booster = select.get_booster(cutoff)
     snap_reset = snap.reset_index()
+    window_end = cutoff + timedelta(weeks=config.HORIZON_WEEKS)
 
     styles = []
     for r in top.itertuples():
         code = r.product_code
-        fc, ln = _evidence(code)
+        fc, ln = _evidence(code) if final else (None, None)  # evidence and concepts exist for AW2020 only
         s, a = snap.loc[code], attrs.loc[code]
         if fc:  # the published winners keep exactly the drivers shown on the evidence sheet
             reasons, source = fc["shap_drivers"], f"outputs/evidence/{code}/forecast.json"
             catalogue = [x["image_path"] for x in fc["representative_articles"]]
         else:
             reasons = model.explain(code, cutoff, snap=snap_reset, booster=booster)
-            source = "models/lgbm_final_20200923.txt (TreeSHAP)"
+            source = f"models/lgbm_final_{cutoff:%Y%m%d}.txt (TreeSHAP)"
             catalogue = data.top_colour_articles(code, n=3, as_of=cutoff)["image_path"].tolist()
         hist = data.sales_curve(code, weeks=HISTORY_WEEKS, end=cutoff)
-        styles.append({
+        rec = {
             "style_id": code,
             "rank": None if pd.isna(r.rank) else int(r.rank),
             "forecast_rank": int(r.forecast_rank),
@@ -135,15 +184,25 @@ def build(n: int = 200) -> dict:
                                   for w, u, b in zip(hist["week_start"], hist["units"], hist["buyers"])],
             "images": _images(code, ln, catalogue),
             "board_caption": ln.get("board_caption") if ln else None,
-        })
+        }
+        if not final:  # observed window: actual units, rank and the 4 weekly values
+            fut = data.sales_curve(code, weeks=config.HORIZON_WEEKS, end=window_end)
+            fut = fut[fut["week_start"] >= pd.Timestamp(cutoff)]
+            rec["actual"] = {"units": _num(r.y_units), "rank": _num(r.actual_rank),
+                             "weekly": [{"week_start": f"{w:%Y-%m-%d}", "units": int(u)}
+                                        for w, u in zip(fut["week_start"], fut["units"])]}
+        styles.append(rec)
     styles.sort(key=lambda x: (x["rank"] is None, x["rank"] or 0, x["forecast_rank"]))
     src = scores["score_source"].iat[0]
-    return {
+    out = {
+        "season": season,
+        "season_label": spec["label"],
         "cutoff": f"{cutoff:%Y-%m-%d}",
-        "forecast_window": {"start": f"{cutoff:%Y-%m-%d}",
-                            "end": f"{cutoff + timedelta(weeks=config.HORIZON_WEEKS) - timedelta(days=1):%Y-%m-%d}"},
+        "forecast_window": {"start": f"{cutoff:%Y-%m-%d}", "end": f"{window_end - timedelta(days=1):%Y-%m-%d}"},
+        "observed": not final,
+        "has_concepts": final,
         "n_styles_scored": int(len(scores)),
-        "model": _model_info(),
+        "model": _model_info(cutoff),
         "selection_rule": "top-3 = highest forecast units, at most one style per garment group, sold in the last "
                           "2 weeks (availability proxy; no stock data)",
         "definitions": {
@@ -161,22 +220,29 @@ def build(n: int = 200) -> dict:
         },
         "styles": styles,
     }
+    if not final:
+        out["definitions"]["actual"] = ("observed units in the forecast window, the style's rank by them among all "
+                                        "scored styles, and the 4 weekly values")
+    return out
 
 
-def main(n: int = 200) -> Path:
-    out = build(n)
-    OUT_PATH.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    top3 = [s for s in out["styles"] if s["rank"]]
-    print(f"wrote {_rel(OUT_PATH)}: {len(out['styles'])} styles")
-    for s in top3:
+def main(season: str = DEFAULT_SEASON, n: int = 200) -> Path:
+    out = build(season, n)
+    path = SEASONS[season]["path"]
+    path.write_text(json.dumps(out, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"wrote {_rel(path)}: {season}, {len(out['styles'])} styles, cutoff {out['cutoff']}")
+    for s in (x for x in out["styles"] if x["rank"]):
+        actual = f", actual {s['actual']['units']:,} (rank {s['actual']['rank']})" if "actual" in s else ""
         print(f"  #{s['rank']} {s['style_id']} {s['name']}: prediction_score {s['prediction_score']}, "
-              f"{s['forecast_units']:,} units, concept {s['images']['concept']}")
-    return OUT_PATH
+              f"{s['forecast_units']:,} units{actual}")
+    return path
 
 
 if __name__ == "__main__":
     import argparse
 
-    ap = argparse.ArgumentParser(description="Write outputs/predictions.json")
+    ap = argparse.ArgumentParser(description="Write the per-season prediction files")
+    ap.add_argument("--season", choices=list(SEASONS), default=DEFAULT_SEASON)
     ap.add_argument("--n", type=int, default=200, help="number of styles by forecast units (top-3 always included)")
-    main(ap.parse_args().n)
+    a = ap.parse_args()
+    main(a.season, a.n)

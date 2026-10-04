@@ -1,9 +1,13 @@
 {
+  "season": "AW2020",
+  "season_label": "Autumn/Winter 2020 (forecast)",
   "cutoff": "2020-09-23",
   "forecast_window": {
     "start": "2020-09-23",
     "end": "2020-10-20"
   },
+  "observed": false,
+  "has_concepts": true,
   "n_styles_scored": 20318,
   "model": {
     "version": "regressor-20200923-r94+clf-top1pct-r294+clf-top0.1pct-r135",
@@ -14397,7 +14401,7 @@
       "images": {
         "reference": [],
         "catalogue": [
-          "images/088/0882900008.jpg",
+          "images/088/0882900004.jpg",
           "images/088/0882900007.jpg",
           "images/088/0882900013.jpg"
         ],
@@ -16035,7 +16039,7 @@
         "reference": [],
         "catalogue": [
           "images/078/0783707109.jpg",
-          "images/078/0783707147.jpg",
+          "images/078/0783707106.jpg",
           "images/078/0783707096.jpg"
         ],
         "concept": null,

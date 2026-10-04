@@ -77,9 +77,10 @@ $c = "h-and-m-personalized-fashion-recommendations"
 .venv\Scripts\python -m data_science.model
 .venv\Scripts\python -m data_science.select
 .venv\Scripts\python -m data_science.train      # winner classifiers + final scores (outputs/classifier/)
-.venv\Scripts\python -m data_science.predict    # outputs/predictions.json for the API/frontend
-.venv\Scripts\python scripts\fetch_list_photos.py --n 50   # list photos (Kaggle, not committed)
-.venv\Scripts\uvicorn backend.api:app --host 0.0.0.0 --port 8000   # API, docs at /docs (see API.md)
+.venv\Scripts\python -m data_science.predict                   # outputs/predictions.json (AW2020)
+.venv\Scripts\python -m data_science.predict --season SS2020   # outputs/predictions_SS2020.json (backtest season)
+.venv\Scripts\python -m data_science.summary                   # outputs/model_summary.json (/model/summary)
+.venv\Scripts\python scripts\fetch_list_photos.py --n 50        # list photos (Kaggle, not committed)
 
 # 4. Agent run: --mock uses a local stand-in instead of the image model (no image API key)
 .venv\Scripts\python -m agents.orchestrator --cutoff 2020-09-22 --mock
@@ -94,15 +95,31 @@ $c = "h-and-m-personalized-fashion-recommendations"
 The agents (step 4, including `--mock`) need Claude: `ANTHROPIC_API_KEY` in `.env` or a local Claude Code login.
 Reference photos (`outputs/refs/`) are H&M/Kaggle data and are not included; step 3 downloads them.
 
+## Run the app (API + frontend)
+
+Two terminals from the repository root (Linux/macOS/Codespaces shown; on Windows use `.venv\Scripts\...`):
+
+```bash
+.venv/bin/uvicorn backend.api:app --host 0.0.0.0 --port 8000                     # API, docs at /docs (API.md)
+API_URL=http://localhost:8000 .venv/bin/streamlit run frontend/app.py \
+    --server.address 0.0.0.0 --server.port 8501                                   # frontend
+```
+
+Open `http://localhost:8501`. In a GitHub Codespace, open the **Ports** tab and click the globe icon next to
+port **8501**; the frontend fetches all data and images from the API on the server side, so port 8000 does not need
+to be public. A style can be linked directly: `?page=detail&style_id=0751471` (add `&season=SS2020` for summer).
+Screenshots: [`docs/screenshots/`](docs/screenshots/).
+
 ## Repository layout
 
 ```
 data_science/       data (DuckDB), features, regressor, winner classifier, evaluation, top-3 selection
   train.py          training pipeline (features → classifiers → final scores; --with-regressor for the rest)
-  predict.py        writes outputs/predictions.json (scores, SHAP reasons, 26-week history, image paths)
+  predict.py        writes outputs/predictions.json (+ _SS2020): scores, SHAP reasons, history, image paths
+  summary.py        writes outputs/model_summary.json from the published evaluation files
   notebooks/        EDA script and the executed extended-EDA notebook
 backend/            FastAPI service: api.py (HTTP), model_service.py (predictions), schemas.py — see API.md
-frontend/           user interface (next phase)
+frontend/           Streamlit app (app.py) and its API client; talks only to the API
 models/             LightGBM regressor/classifiers and isotonic calibrators
 mcp_servers/        FastMCP servers: retail, forecast, image
 agents/             orchestrator, in-process bookkeeping tools, sub-agent prompts
@@ -111,7 +128,8 @@ skills_lib/         style-dna-brief template and validator (works without the SD
 .claude/skills/     the style-dna-brief skill
 scripts/            data conversion, MCP smoke test, image test, finalize, evidence sheet
 tests/              leakage, NDCG, classification/calibration, quota guards, skill examples
-outputs/            generated_concepts.png (= final board), predictions.json, classifier reports, evidence,
+docs/screenshots/   app screenshots
+outputs/            generated_concepts.png (= final board), predictions*.json, model_summary.json, classifier reports, evidence,
                     figures, agent run
 ```
 

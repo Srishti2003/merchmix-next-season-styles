@@ -14,36 +14,48 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from backend.model_service import ModelService, StyleNotFound
-from backend.schemas import ErrorResponse, Health, StyleDetail, TopStylesResponse, ValidationErrorResponse
+from backend.model_service import DEFAULT_SEASON, SeasonNotFound, SeasonRegistry, StyleNotFound
+from backend.schemas import (ErrorResponse, Health, ModelSummary, SeasonsResponse, StyleDetail, TopStylesResponse,
+                             ValidationErrorResponse)
 
-IMAGE_DIRS = {"refs", "evidence"}                                       # sub-folders of outputs/ served as images
+IMAGE_DIRS = {"refs", "evidence", "classifier"}                         # sub-folders of outputs/ served as images
 IMAGE_FILES = {"generated_concepts.png", "final_board.png", "evidence_sheet.png"}
 IMAGE_TYPES = {".jpg", ".jpeg", ".png"}
 
 app = FastAPI(
     title="Merchmix style intelligence API",
     version="1.0.0",
-    description="Predicted winning styles for 23 Sep – 20 Oct 2020 (H&M data): ranked list, per-style explanation, "
-                "sales history and the generated next-season concepts. Serves `outputs/predictions.json`, written "
-                "offline by `python -m data_science.predict`.",
+    description="Predicted winning styles (H&M data): ranked list, per-style explanation, sales history and the "
+                "generated next-season concepts. AW2020 (default) is the forecast for 23 Sep – 20 Oct 2020; SS2020 "
+                "is a backtest season (27 May – 23 Jun 2020) with actual units. Serves the files written offline by "
+                "`python -m data_science.predict` and `python -m data_science.summary`.",
 )
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:8501", "http://127.0.0.1:8501"],
                    allow_methods=["GET"], allow_headers=["*"])
 
-NOT_FOUND = {404: {"model": ErrorResponse, "description": "Unknown or malformed style_id"}}
+NOT_FOUND = {404: {"model": ErrorResponse, "description": "Unknown or malformed style_id, or unknown season"}}
+SEASON_NOT_FOUND = {404: {"model": ErrorResponse, "description": "Unknown season"}}
 INVALID = {422: {"model": ValidationErrorResponse, "description": "Query parameter out of range"}}
 
 
 @lru_cache(maxsize=1)
-def get_service() -> ModelService:
-    """One ModelService per process: predictions.json is read once."""
-    return ModelService()
+def get_registry() -> SeasonRegistry:
+    """One registry per process: each season's predictions file is read once."""
+    return SeasonRegistry()
+
+
+def season_param(season: str = Query(DEFAULT_SEASON, description="season id from /seasons (AW2020 or SS2020)")) -> str:
+    return season
 
 
 @app.exception_handler(StyleNotFound)
 async def style_not_found(_: Request, exc: StyleNotFound) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": exc.detail, "style_id": exc.style_id})
+
+
+@app.exception_handler(SeasonNotFound)
+async def season_not_found(_: Request, exc: SeasonNotFound) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": exc.detail, "season": exc.season})
 
 
 @app.exception_handler(RequestValidationError)
@@ -59,39 +71,55 @@ async def http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
 
 
 @app.get("/health", response_model=Health, summary="Service status and model version", tags=["meta"])
-def health(service: ModelService = Depends(get_service)) -> dict:
-    """Status, model version, prediction cutoff date and the number of styles available."""
-    return service.health()
+def health(registry: SeasonRegistry = Depends(get_registry)) -> dict:
+    """Status, model version, prediction cutoff date and the number of styles available (default season)."""
+    return registry.health()
 
 
-@app.get("/styles/top", response_model=TopStylesResponse, responses=INVALID, tags=["styles"],
+@app.get("/seasons", response_model=SeasonsResponse, summary="Available seasons", tags=["meta"])
+def seasons(registry: SeasonRegistry = Depends(get_registry)) -> dict:
+    """AW2020 = the forecast (default); SS2020 = backtest at the 27 May 2020 cutoff, with actual units."""
+    return {"seasons": registry.seasons()}
+
+
+@app.get("/model/summary", response_model=ModelSummary, response_model_by_alias=True, tags=["meta"],
+         summary="Model performance vs baselines, success definition, horizon, stock caveat")
+def model_summary(registry: SeasonRegistry = Depends(get_registry)) -> dict:
+    """Regressor and classifiers vs the naive baselines (from the published evaluation files), calibration,
+    the reliability plot URL and the SS2020 → AW2020 category-mix shift."""
+    return registry.summary()
+
+
+@app.get("/styles/top", response_model=TopStylesResponse, responses={**INVALID, **SEASON_NOT_FOUND}, tags=["styles"],
          summary="Top predicted styles (ranked list)")
 def top_styles(limit: int = Query(10, ge=1, le=200, description="number of styles to return (1-200)"),
                offset: int = Query(0, ge=0, description="number of styles to skip"),
-               service: ModelService = Depends(get_service)) -> dict:
+               season: str = Depends(season_param),
+               registry: SeasonRegistry = Depends(get_registry)) -> dict:
     """The selected top 3 first (one per garment group), then every other style by forecast units.
     Each item has the scores, category, the last 8 weeks of sales plus the 4-week total, and a photo URL
-    (null when the catalogue photo has not been downloaded)."""
-    return service.top(limit, offset)
+    (null when the catalogue photo has not been downloaded). Observed seasons add actual units and rank."""
+    return registry.service(season).top(limit, offset)
 
 
 @app.get("/styles/{style_id}", response_model=StyleDetail, response_model_by_alias=True, responses=NOT_FOUND,
          tags=["styles"], summary="One style: product info, scores, explanation, history, concept")
 def style_detail(style_id: str = PathParam(description="product_code, with or without the leading zero "
                                                        "(751471 or 0751471)"),
-                 service: ModelService = Depends(get_service)) -> dict:
+                 season: str = Depends(season_param),
+                 registry: SeasonRegistry = Depends(get_registry)) -> dict:
     """Product information and attributes, scores, the 5 SHAP drivers in plain words plus a one-line reason for
     (non-)selection, up to 26 weeks of sales, and for the top 3 the generated concept (image, KEEP/CHANGE brief,
-    critic status)."""
-    return service.detail(style_id)
+    critic status). Observed seasons add the actual units, rank and weekly values in the window."""
+    return registry.service(season).detail(style_id)
 
 
 @app.get("/images/{path:path}", tags=["images"], summary="Static images from outputs/",
          responses={404: {"model": ErrorResponse, "description": "Image not found or not served"}})
-def image(path: str, service: ModelService = Depends(get_service)) -> FileResponse:
-    """Reference photos (`refs/…`), concepts and sales curves (`evidence/…`) and the final boards. Only image files
-    under those locations are served."""
-    root = service.outputs_dir.resolve()
+def image(path: str, registry: SeasonRegistry = Depends(get_registry)) -> FileResponse:
+    """Reference photos (`refs/…`), concepts and sales curves (`evidence/…`), reliability plots (`classifier/…`)
+    and the final boards. Only image files under those locations are served."""
+    root = registry.outputs_dir.resolve()
     target = (root / path).resolve()
     parts = Path(path).parts
     allowed = bool(parts) and ((parts[0] in IMAGE_DIRS and len(parts) > 1) or (len(parts) == 1 and path in IMAGE_FILES))

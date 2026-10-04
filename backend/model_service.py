@@ -14,6 +14,9 @@ from pathlib import Path
 import config
 
 PREDICTIONS_PATH = config.OUT_DIR / "predictions.json"
+SEASON_FILES = {"AW2020": config.OUT_DIR / "predictions.json", "SS2020": config.OUT_DIR / "predictions_SS2020.json"}
+DEFAULT_SEASON = "AW2020"
+SUMMARY_PATH = config.OUT_DIR / "model_summary.json"
 IMAGE_PREFIX = "/images"
 _REASON = re.compile(r"^(?P<feature>.+?) = (?P<value>.+?) → (?P<direction>raises|lowers) the forecast "
                      r"×(?P<mult>[\d.]+) vs the last-week run-rate$")
@@ -25,6 +28,15 @@ class StyleNotFound(LookupError):
     def __init__(self, style_id: str, detail: str):
         super().__init__(detail)
         self.style_id, self.detail = style_id, detail
+
+
+class SeasonNotFound(LookupError):
+    """Unknown season id (the API maps it to a 404)."""
+
+    def __init__(self, season: str, available: list[str]):
+        self.season = season
+        self.detail = f"Unknown season {season!r}. Available: {', '.join(available)}."
+        super().__init__(self.detail)
 
 
 def normalize_style_id(raw: str) -> str:
@@ -55,6 +67,9 @@ class ModelService:
         self.styles: list[dict] = self.data["styles"]  # top-3 first, then by forecast rank
         self.by_id = {s["style_id"]: s for s in self.styles}
         self.selected = [s for s in self.styles if s["rank"] is not None]
+        self.season = self.data.get("season", DEFAULT_SEASON)
+        self.observed = bool(self.data.get("observed"))
+        self.has_concepts = bool(self.data.get("has_concepts", True))
 
     # --- images -------------------------------------------------------------------------------------------
     def image_url(self, repo_path: str | None) -> str | None:
@@ -80,8 +95,10 @@ class ModelService:
     @cached_property
     def meta(self) -> dict:
         d = self.data
-        return {"cutoff": d["cutoff"], "forecast_window": d["forecast_window"], "n_styles": len(self.styles),
-                "n_styles_scored": d["n_styles_scored"], "model_version": d["model"]["version"]}
+        return {"season": self.season, "season_label": d.get("season_label", self.season), "cutoff": d["cutoff"],
+                "forecast_window": d["forecast_window"], "observed": self.observed, "has_concepts": self.has_concepts,
+                "n_styles": len(self.styles), "n_styles_scored": d["n_styles_scored"],
+                "model_version": d["model"]["version"]}
 
     def get(self, raw_id: str) -> dict:
         code = normalize_style_id(raw_id)
@@ -102,10 +119,14 @@ class ModelService:
             "sales_history": {"last_8_weeks": [{"week_start": w["week_start"], "units": w["units"]} for w in hist[-8:]],
                               "units_last_4w": s["performance"]["units_last_4w"]},
             "image_url": self.primary_image_url(s),
+            "actual_units": (s.get("actual") or {}).get("units"),
+            "actual_rank": (s.get("actual") or {}).get("rank"),
         }
 
     def top(self, limit: int = 10, offset: int = 0) -> dict:
-        return {"cutoff": self.meta["cutoff"], "forecast_window": self.meta["forecast_window"],
+        m = self.meta
+        return {"season": m["season"], "season_label": m["season_label"], "observed": m["observed"],
+                "cutoff": m["cutoff"], "forecast_window": m["forecast_window"],
                 "total": len(self.styles), "limit": limit, "offset": offset,
                 "styles": [self.summary(s) for s in self.styles[offset:offset + limit]]}
 
@@ -128,7 +149,7 @@ class ModelService:
     def concept(self, s: dict) -> dict | None:
         """Generated concept for a top-3 style (from the published evidence files), else None."""
         d = self.outputs_dir / "evidence" / s["style_id"]
-        if s["rank"] is None or not (d / "lineage.json").is_file():
+        if not self.has_concepts or s["rank"] is None or not (d / "lineage.json").is_file():
             return None
         lineage = json.loads((d / "lineage.json").read_text(encoding="utf-8"))
         final = lineage["final_concept"]
@@ -153,6 +174,7 @@ class ModelService:
         s = self.get(raw_id)
         refs = [u for u in (self.image_url(p) for p in self._reference_paths(s)) if u]
         return {
+            "season": self.season, "cutoff": self.meta["cutoff"], "forecast_window": self.meta["forecast_window"],
             "style_id": s["style_id"], "name": s["name"], "rank": s["rank"], "forecast_rank": s["forecast_rank"],
             "prediction_score": s["prediction_score"], "confidence_top1pct": s["confidence_top1pct"],
             "p_top0_1pct": s["p_top0_1pct"], "forecast_units": s["forecast_units"], "category": self._category(s),
@@ -162,6 +184,7 @@ class ModelService:
             "sales_history_26w": s["sales_history_26w"],
             "image_url": refs[0] if refs else None, "reference_image_urls": refs,
             "concept": self.concept(s),
+            "actual": s.get("actual"),
         }
 
     def health(self) -> dict:
@@ -169,3 +192,45 @@ class ModelService:
         return {"status": "ok", "model_version": m["model_version"], "prediction_cutoff": m["cutoff"],
                 "forecast_window": m["forecast_window"], "n_styles": m["n_styles"],
                 "n_styles_scored": m["n_styles_scored"]}
+
+
+class SeasonRegistry:
+    """One ModelService per season, each loaded once on first use; plus the model summary."""
+
+    def __init__(self, files: dict[str, Path] | None = None, outputs_dir: Path = config.OUT_DIR,
+                 summary_path: Path = SUMMARY_PATH, default: str = DEFAULT_SEASON):
+        self.files = {k: Path(v) for k, v in (files or SEASON_FILES).items() if Path(v).is_file()}
+        self.outputs_dir, self.summary_path, self.default = Path(outputs_dir), Path(summary_path), default
+        self._services: dict[str, ModelService] = {}
+
+    def resolve(self, season: str | None) -> str:
+        key = (season or self.default).strip().upper()
+        if key not in self.files:
+            raise SeasonNotFound(season or "", list(self.files))
+        return key
+
+    def service(self, season: str | None = None) -> ModelService:
+        key = self.resolve(season)
+        if key not in self._services:
+            self._services[key] = ModelService(self.files[key], self.outputs_dir)
+        return self._services[key]
+
+    def seasons(self) -> list[dict]:
+        out = []
+        for key in self.files:
+            m = self.service(key).meta
+            out.append({"id": key, "label": m["season_label"], "cutoff": m["cutoff"],
+                        "forecast_window": m["forecast_window"], "observed": m["observed"],
+                        "has_concepts": m["has_concepts"], "n_styles": m["n_styles"], "default": key == self.default})
+        return out
+
+    def summary(self) -> dict:
+        """Model performance summary (outputs/model_summary.json) with plot paths turned into image URLs."""
+        d = json.loads(self.summary_path.read_text(encoding="utf-8"))
+        svc = self.service()
+        for k in ("classifier_top1pct", "classifier_top0.1pct"):
+            d[k]["reliability_plot_url"] = svc.image_url(d[k].pop("reliability_plot", None))
+        return d
+
+    def health(self) -> dict:
+        return {**self.service().health(), "seasons": list(self.files)}

@@ -1,8 +1,14 @@
 # API
 
-FastAPI service over the offline predictions in `outputs/predictions.json` (written by `python -m data_science.predict`).
-Prediction cutoff 2020-09-23; forecast window 2020-09-23 → 2020-10-20. The 200 styles with the highest forecast
-units are available; the selected top 3 come first.
+FastAPI service over the offline prediction files written by `python -m data_science.predict` and
+`python -m data_science.summary`. Two seasons:
+
+- **AW2020** (default): the forecast. Cutoff 2020-09-23, window 2020-09-23 → 2020-10-20 (`outputs/predictions.json`).
+- **SS2020**: a backtest season. Cutoff 2020-05-27, window 2020-05-27 → 2020-06-23 (`outputs/predictions_SS2020.json`).
+  The window is in the data, so actual units are included. It uses the published summer regressor and the
+  out-of-fold classifier predictions at that cutoff (no information from the window). It has no concepts.
+
+Each season has the 200 styles with the highest forecast units; the selected top 3 come first.
 
 ```bash
 uvicorn backend.api:app --host 0.0.0.0 --port 8000
@@ -12,10 +18,15 @@ Interactive docs with schemas and example responses: `http://localhost:8000/docs
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/health` | status, model version, prediction cutoff, number of styles |
-| GET | `/styles/top?limit=10&offset=0` | ranked list (top 3 first, then by forecast units) |
-| GET | `/styles/{style_id}` | one style: product info, scores, explanation, 26-week history, concept (top 3) |
-| GET | `/images/{path}` | images from `outputs/`: `refs/…`, `evidence/…`, `generated_concepts.png` |
+| GET | `/health` | status, model version, prediction cutoff, number of styles, seasons |
+| GET | `/seasons` | available seasons (AW2020 default, SS2020 backtest) |
+| GET | `/styles/top?limit=10&offset=0&season=AW2020` | ranked list (top 3 first, then by forecast units) |
+| GET | `/styles/{style_id}?season=AW2020` | one style: product info, scores, explanation, 26-week history, concept (AW2020 top 3), actuals (SS2020) |
+| GET | `/model/summary` | regressor and classifiers vs baselines, calibration, success definition, horizon, stock caveat, category-mix shift |
+| GET | `/images/{path}` | images from `outputs/`: `refs/…`, `evidence/…`, `classifier/…`, `generated_concepts.png` |
+
+`season` is optional on the style endpoints (default `AW2020`, case-insensitive); an unknown season → **404**
+`{"detail": "Unknown season 'AW2099'. Available: AW2020, SS2020.", "season": "AW2099"}`.
 
 Code layout: `backend/api.py` (HTTP only), `backend/model_service.py` (loads the predictions once, no FastAPI
 imports), `backend/schemas.py` (Pydantic response models). CORS allows `http://localhost:8501` (Streamlit).
@@ -38,8 +49,54 @@ curl localhost:8000/health
 ```json
 {"status": "ok", "model_version": "regressor-20200923-r94+clf-top1pct-r294+clf-top0.1pct-r135",
  "prediction_cutoff": "2020-09-23", "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
- "n_styles": 200, "n_styles_scored": 20318}
+ "n_styles": 200, "n_styles_scored": 20318, "seasons": ["AW2020", "SS2020"]}
 ```
+
+## GET /seasons
+
+```bash
+curl localhost:8000/seasons
+```
+```json
+{"seasons": [
+  {"id": "AW2020", "label": "Autumn/Winter 2020 (forecast)", "cutoff": "2020-09-23",
+   "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"}, "observed": false, "has_concepts": true,
+   "n_styles": 200, "default": true},
+  {"id": "SS2020", "label": "Spring/Summer 2020 (backtest)", "cutoff": "2020-05-27",
+   "forecast_window": {"start": "2020-05-27", "end": "2020-06-23"}, "observed": true, "has_concepts": false,
+   "n_styles": 200, "default": false}]}
+```
+
+With `season=SS2020`, list items add `actual_units` and `actual_rank` (e.g. `0599580` Timeless Midrise Brief:
+forecast 12,703.1, actual 14,674, actual rank 1), and the detail adds
+`"actual": {"units": …, "rank": …, "weekly": [4 × {"week_start", "units"}]}`.
+
+## GET /model/summary
+
+```bash
+curl localhost:8000/model/summary
+```
+Abridged:
+```json
+{
+  "success_definition": "A winner is a style whose units over the next 4 weeks rank in the top 1% of styles active at that cutoff …",
+  "horizon": "Styles turn over fast (median 19 active weeks), so 4 weeks is the longest window …",
+  "stock_caveat": "There is no stock data, so sales are censored demand …",
+  "ranking": "Styles are ranked by the regressor's forecast units; the classifiers add calibrated probabilities.",
+  "regressor": {"backtest": [{"method": "LightGBM regressor", "ndcg@50": {"mean": 0.924, "std": 0.031},
+                              "precision@12": {"mean": 0.725, "std": 0.125}}, "…"],
+                "ndcg50_wins": [{"baseline": "Last week × 4", "wins": 7, "of": 10}, "…"], "validation": ["…"]},
+  "classifier_top1pct": {"methods": ["…"], "calibration": {"ece_raw": 0.00361, "ece_calibrated": 0.00282, "…": "…"},
+                         "reliability_plot_url": "/images/classifier/reliability.png"},
+  "classifier_top0.1pct": {"methods": [{"method": "LightGBM classifier",
+                                        "backtest": {"pr_auc": 0.807, "precision@20": 0.735, "precision@50": 0.358, "recall@50": 0.91},
+                                        "validation": {"pr_auc": 0.456, "…": "…"}}, "…"]},
+  "seasonal": {"category_mix": [{"product_group": "Swimwear", "SS2020": 0.38, "AW2020": 0.0, "change_pts": -38.1}, "…"],
+               "ss2020_top10_hits": 7}
+}
+```
+Every number comes from `outputs/figures/eval_table.md`, `outputs/figures/seasonal_comparison.md` and
+`outputs/classifier/per_cutoff*.csv`.
 
 ## GET /styles/top
 
@@ -163,6 +220,7 @@ Anything else (other folders, non-image files, missing files, paths escaping `ou
 | status | when | body |
 |---|---|---|
 | 404 | unknown or malformed `style_id` | `{"detail": "...", "style_id": "..."}` |
+| 404 | unknown `season` | `{"detail": "...", "season": "..."}` |
 | 404 | image not found / not served, unknown route | `{"detail": "..."}` |
 | 422 | query parameter out of range or wrong type | `{"detail": "Invalid request parameters.", "errors": [{"loc", "msg", "type"}]}` |
 

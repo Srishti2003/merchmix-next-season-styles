@@ -99,3 +99,46 @@ def test_images_served_only_from_allowed_places(client: TestClient) -> None:
 def test_cors_allows_streamlit_origin(client: TestClient) -> None:
     r = client.get("/health", headers={"Origin": "http://localhost:8501"})
     assert r.headers.get("access-control-allow-origin") == "http://localhost:8501"
+
+
+def test_seasons(client: TestClient) -> None:
+    s = client.get("/seasons").json()["seasons"]
+    by_id = {x["id"]: x for x in s}
+    assert set(by_id) == {"AW2020", "SS2020"}
+    assert by_id["AW2020"]["default"] and not by_id["AW2020"]["observed"] and by_id["AW2020"]["has_concepts"]
+    assert by_id["SS2020"]["observed"] and not by_id["SS2020"]["has_concepts"]
+    assert by_id["SS2020"]["cutoff"] == "2020-05-27"
+
+
+def test_ss2020_top_has_actuals(client: TestClient) -> None:
+    body = client.get("/styles/top", params={"season": "SS2020", "limit": 10}).json()
+    assert body["season"] == "SS2020" and body["observed"] and body["cutoff"] == "2020-05-27"
+    first = body["styles"][0]
+    assert first["style_id"] == "0599580" and first["actual_units"] == 14674 and first["actual_rank"] == 1
+    # the AW2020 default list has no actuals
+    assert client.get("/styles/top", params={"limit": 1}).json()["styles"][0]["actual_units"] is None
+
+
+def test_ss2020_detail_has_actual_and_no_concept(client: TestClient) -> None:
+    d = client.get("/styles/751471", params={"season": "ss2020"}).json()  # season id is case-insensitive
+    assert d["season"] == "SS2020" and d["concept"] is None
+    assert d["actual"]["units"] is not None and len(d["actual"]["weekly"]) == 4
+    assert d["explanation"]["source"].startswith("models/lgbm_final_20200527")
+
+
+def test_unknown_season_is_404(client: TestClient) -> None:
+    for url in ("/styles/top?season=AW2099", "/styles/0751471?season=AW2099"):
+        r = client.get(url)
+        assert r.status_code == 404 and r.json()["season"] == "AW2099" and "Available" in r.json()["detail"]
+
+
+def test_model_summary(client: TestClient) -> None:
+    m = client.get("/model/summary").json()
+    assert m["success_definition"] and m["horizon"] and m["stock_caveat"]
+    reg = {r["method"]: r for r in m["regressor"]["backtest"]}
+    assert reg["LightGBM regressor"]["ndcg@50"]["mean"] == 0.924
+    clf = {r["method"]: r for r in m["classifier_top0.1pct"]["methods"]}
+    assert clf["LightGBM classifier"]["validation"]["pr_auc"] == 0.456
+    assert m["classifier_top1pct"]["reliability_plot_url"] == "/images/classifier/reliability.png"
+    assert client.get(m["classifier_top1pct"]["reliability_plot_url"]).status_code == 200
+    assert m["seasonal"]["ss2020_top10_hits"] == 7
