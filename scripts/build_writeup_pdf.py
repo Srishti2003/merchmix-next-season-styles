@@ -49,6 +49,8 @@ def to_html(md_text: str) -> str:
         return f'<div class="mermaid">{html.escape(m[1])}</div>'
     md_text = re.sub(r"```mermaid\n(.*?)```", mermaid, md_text, flags=re.S)
     body = markdown.markdown(md_text, extensions=["tables", "fenced_code", "sane_lists"])
+    # Relative links would become file:// URLs with the local checkout path; keep them as plain text in the PDF.
+    body = re.sub(r'<a href="(?![a-z]+://|#|mailto:)[^"]*">(.*?)</a>', r"\1", body, flags=re.S)
     return f"""<!doctype html><html><head><meta charset="utf-8"><base href="{ROOT.as_uri()}/">
 <style>{CSS}</style>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>

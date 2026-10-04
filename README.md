@@ -26,9 +26,9 @@ must have sold in the last 2 weeks. `prediction_score` = calibrated probability 
 
 ![Three predicted winners and their next-season concepts](outputs/generated_concepts.png)
 
-| Top styles | Style detail | Seasonal view |
-|---|---|---|
-| ![Top styles page](docs/screenshots/top_styles.png) | ![Style detail page](docs/screenshots/style_detail.png) | ![Seasonal view page](docs/screenshots/seasonal_view.png) |
+| Overview | Top styles | Style detail | Seasonal view |
+|---|---|---|---|
+| ![Overview page](docs/screenshots/overview.png) | ![Top styles page](docs/screenshots/top_styles.png) | ![Style detail page](docs/screenshots/style_detail.png) | ![Seasonal view page](docs/screenshots/seasonal_view.png) |
 
 Why each style was picked, with SHAP drivers and the concept lineage: [`outputs/evidence_sheet.png`](outputs/evidence_sheet.png).
 
@@ -94,6 +94,7 @@ export HM_DATA_DIR=$(realpath ../hm-data/data)
 .venv/bin/python -m data_science.predict --season SS2020  # outputs/predictions_SS2020.json (backtest season)
 .venv/bin/python -m data_science.summary                  # outputs/model_summary.json
 .venv/bin/python scripts/fetch_list_photos.py --n 50      # optional: catalogue photos (Kaggle, not committed)
+.venv/bin/python scripts/fetch_list_photos.py --n 50 --season SS2020   # same for the SS2020 backtest season
 
 # App: two terminals
 .venv/bin/uvicorn backend.api:app --host 0.0.0.0 --port 8000
@@ -129,7 +130,7 @@ data_science/            data processing, features, models, evaluation
   train.py  predict.py   training pipeline, prediction files for the API
   model.py classify.py   regressor (+ backtest), winner classifiers + calibration
 backend/                 api.py (HTTP), model_service.py (predictions), schemas.py
-frontend/                app.py (Streamlit), api_client.py
+frontend/                app.py (Streamlit), api_client.py; theme in .streamlit/config.toml
 models/                  LightGBM regressor/classifiers, isotonic calibrators
 outputs/                 generated_concepts.png, predictions*.json, evidence/, figures/, classifier/
 agents/ mcp_servers/ image/ skills_lib/ .claude/skills/   agentic concept workflow (bonus)

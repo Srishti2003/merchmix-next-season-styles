@@ -26,7 +26,8 @@ def test_top_list(client: TestClient) -> None:
     first = body["styles"][0]
     assert set(first) >= {"style_id", "name", "prediction_score", "confidence_top1pct", "forecast_units", "rank",
                           "category", "sales_history", "image_url"}
-    assert first["category"] == {"product_type": "Trousers", "garment_group": "Trousers"}
+    assert first["category"] == {"product_type": "Trousers", "garment_group": "Trousers", "index_group": "Ladieswear"}
+    assert body["n_styles_scored"] == 20318
     assert first["name"] == "Pluto RW slacks" and first["raw_name"] == "Pluto RW slacks (1)"
     assert len(first["sales_history"]["last_8_weeks"]) == 8
     assert first["sales_history"]["units_last_4w"] == 9182

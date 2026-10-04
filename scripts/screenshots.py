@@ -1,15 +1,19 @@
 """Take app screenshots into docs/screenshots/ with headless Chromium (dev only).
 
   pip install playwright && python -m playwright install chromium   # plus: sudo python -m playwright install-deps chromium
-  python scripts/screenshots.py          # needs the API (port 8000) and Streamlit (port 8501) running
+  python scripts/screenshots.py          # needs the API and Streamlit running (APP_URL, default port 8501)
 """
+import os
+
 from playwright.sync_api import sync_playwright
-BASE, OUT = "http://localhost:8501", "docs/screenshots"
-shots = [("top_styles", "/?page=top", "Top predicted styles", 1950),
+BASE, OUT = os.getenv("APP_URL", "http://localhost:8501"), "docs/screenshots"
+shots = [("overview", "/?page=overview", "How to read this", 1500),
+         ("top_styles", "/?page=top", "Top predicted styles", 1950),
          ("style_detail", "/?page=detail&style_id=0751471", "Why the model picked it", 2350),
          ("style_detail_richie", "/?page=detail&style_id=0685814", "Next-season concept", 2350),
-         ("seasonal_view", "/?page=seasonal", "Category mix shift", 1600),
-         ("model_performance", "/?page=performance", "Regressor vs baselines", 1550),
+         ("style_detail_ss2020", "/?page=detail&style_id=0854677&season=SS2020", "Why the model picked it", 1800),
+         ("seasonal_view", "/?page=seasonal", "Category mix shift", 1900),
+         ("model_performance", "/?page=performance", "Regressor vs baselines", 1750),
          ("concepts", "/?page=concepts", "Next-season concepts", 1500)]
 with sync_playwright() as p:
     b = p.chromium.launch()

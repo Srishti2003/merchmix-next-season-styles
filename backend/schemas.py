@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class Category(BaseModel):
     product_type: str | None = Field(description="H&M product type, e.g. Trousers")
     garment_group: str | None = Field(description="H&M garment group; the top-3 has at most one style per group")
+    index_group: str | None = Field(None, description="H&M index group, e.g. Ladieswear, Menswear, Divided")
 
 
 class WeekUnits(BaseModel):
@@ -54,6 +55,7 @@ class TopStylesResponse(BaseModel):
     cutoff: date = Field(description="prediction cutoff: data up to the day before is used")
     forecast_window: ForecastWindow
     total: int = Field(description="number of styles available in the list")
+    n_styles_scored: int = Field(description="number of styles the model scored at this cutoff")
     limit: int
     offset: int
     styles: list[StyleSummary]
@@ -61,10 +63,10 @@ class TopStylesResponse(BaseModel):
     model_config = ConfigDict(json_schema_extra={"examples": [{
         "season": "AW2020", "season_label": "Autumn/Winter 2020 (forecast)", "observed": False,
         "cutoff": "2020-09-23", "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
-        "total": 200, "limit": 1, "offset": 0,
+        "total": 200, "n_styles_scored": 20318, "limit": 1, "offset": 0,
         "styles": [{"style_id": "0751471", "name": "Pluto RW slacks", "raw_name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
                     "prediction_score": 1.0, "confidence_top1pct": 1.0, "forecast_units": 7417.3,
-                    "category": {"product_type": "Trousers", "garment_group": "Trousers"},
+                    "category": {"product_type": "Trousers", "garment_group": "Trousers", "index_group": "Ladieswear"},
                     "sales_history": {"last_8_weeks": [{"week_start": "2020-09-16", "units": 1711}],
                                       "units_last_4w": 9182},
                     "image_url": "/images/refs/0751471/0751471001.jpg"}]}]})
@@ -148,7 +150,7 @@ class StyleDetail(BaseModel):
         "season": "AW2020", "cutoff": "2020-09-23", "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
         "style_id": "0751471", "name": "Pluto RW slacks", "raw_name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
         "prediction_score": 1.0, "confidence_top1pct": 1.0, "p_top0_1pct": 1.0, "forecast_units": 7417.3,
-        "category": {"product_type": "Trousers", "garment_group": "Trousers"},
+        "category": {"product_type": "Trousers", "garment_group": "Trousers", "index_group": "Ladieswear"},
         "attributes": {"colour_group_name": "Black", "n_colours": 10},
         "performance": {"units_last_4w": 9182, "units_same_4w_last_year": 3159},
         "explanation": {"why_selected": "Selected #1: highest forecast in Trousers (7,417 units for 2020-09-23 to "

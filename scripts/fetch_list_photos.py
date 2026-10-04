@@ -1,6 +1,7 @@
 """Download one catalogue photo per style for the frontend list (outputs/refs/<style_id>/, git-ignored).
 
-  python scripts/fetch_list_photos.py --n 50
+  python scripts/fetch_list_photos.py --n 50                    # AW2020 (outputs/predictions.json)
+  python scripts/fetch_list_photos.py --n 50 --season SS2020    # outputs/predictions_SS2020.json
 
 Uses the per-image Kaggle download (needs Kaggle credentials). Tries the best-selling colourway first and falls
 back to the next colourways when Kaggle has no image for it. Skips styles that already have a photo.
@@ -18,9 +19,12 @@ import config  # noqa: E402
 from data_science import select  # noqa: E402
 
 
-def fetch(n: int = 50) -> int:
+FILES = {"AW2020": "predictions.json", "SS2020": "predictions_SS2020.json"}
+
+
+def fetch(n: int = 50, season: str = "AW2020") -> int:
     exe = str(Path(sys.executable).with_name("kaggle"))
-    styles = sorted(json.loads((config.OUT_DIR / "predictions.json").read_text())["styles"],
+    styles = sorted(json.loads((config.OUT_DIR / FILES[season]).read_text())["styles"],
                     key=lambda s: s["forecast_rank"])[:n]
     found = 0
     for s in styles:
@@ -44,4 +48,6 @@ def fetch(n: int = 50) -> int:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--n", type=int, default=50)
-    fetch(ap.parse_args().n)
+    ap.add_argument("--season", choices=list(FILES), default="AW2020")
+    args = ap.parse_args()
+    fetch(args.n, args.season)

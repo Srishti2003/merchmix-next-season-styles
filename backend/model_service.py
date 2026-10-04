@@ -114,7 +114,9 @@ class ModelService:
         return self.by_id[code]
 
     def _category(self, s: dict) -> dict:
-        return {"product_type": s["category"], "garment_group": s["attributes"].get("garment_group_name")}
+        a = s["attributes"]
+        return {"product_type": s["category"], "garment_group": a.get("garment_group_name"),
+                "index_group": a.get("index_group_name")}
 
     def summary(self, s: dict) -> dict:
         hist = s["sales_history_26w"]
@@ -134,7 +136,7 @@ class ModelService:
         m = self.meta
         return {"season": m["season"], "season_label": m["season_label"], "observed": m["observed"],
                 "cutoff": m["cutoff"], "forecast_window": m["forecast_window"],
-                "total": len(self.styles), "limit": limit, "offset": offset,
+                "total": len(self.styles), "n_styles_scored": m["n_styles_scored"], "limit": limit, "offset": offset,
                 "styles": [self.summary(s) for s in self.styles[offset:offset + limit]]}
 
     def why_selected(self, s: dict) -> str:

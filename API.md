@@ -109,12 +109,12 @@ curl "localhost:8000/styles/top?limit=2"
 {
   "cutoff": "2020-09-23",
   "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
-  "total": 200, "limit": 2, "offset": 0,
+  "total": 200, "n_styles_scored": 20318, "limit": 2, "offset": 0,
   "styles": [
     {
       "style_id": "0751471", "name": "Pluto RW slacks", "raw_name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
       "prediction_score": 1.0, "confidence_top1pct": 1.0, "forecast_units": 7417.3,
-      "category": {"product_type": "Trousers", "garment_group": "Trousers"},
+      "category": {"product_type": "Trousers", "garment_group": "Trousers", "index_group": "Ladieswear"},
       "sales_history": {
         "last_8_weeks": [{"week_start": "2020-07-29", "units": 764}, {"week_start": "2020-08-05", "units": 616},
                          {"week_start": "2020-08-12", "units": 1291}, {"week_start": "2020-08-19", "units": 2070},
@@ -149,7 +149,7 @@ curl localhost:8000/styles/751471
 {
   "style_id": "0751471", "name": "Pluto RW slacks", "raw_name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
   "prediction_score": 1.0, "confidence_top1pct": 1.0, "p_top0_1pct": 1.0, "forecast_units": 7417.3,
-  "category": {"product_type": "Trousers", "garment_group": "Trousers"},
+  "category": {"product_type": "Trousers", "garment_group": "Trousers", "index_group": "Ladieswear"},
   "attributes": {"product_group_name": "Garment Lower body", "garment_group_name": "Trousers",
                  "index_group_name": "Ladieswear", "section_name": "Womens Everyday Collection",
                  "colour_group_name": "Black", "graphical_appearance_name": "Solid",

@@ -103,7 +103,11 @@ Sources: `outputs/figures/eval_table.md`, `outputs/classifier/eval_classifier.md
 <img src="outputs/classifier/reliability.png" alt="Reliability of the top-1% classifier, raw vs calibrated" width="360">
 
 **Seasonal check (bonus):** the same pipeline at the 27 May 2020 cutoff put 7 of its predicted top 10 in the actual
-top 10 (`outputs/figures/seasonal_comparison.md`).
+top 10 (`outputs/figures/seasonal_comparison.md`). A low prediction score next to a large unit forecast was a
+warning sign: of the 20 largest SS2020 forecasts, the 6 scored below 0.3 include all 4 that sold under half their
+forecast (all C Lolly swimwear, e.g. C Lolly Top: 8,901 forecast, 1,811 sold, score 0.09), while the other 14 sold
+at least 84% of forecast. This is one season and 4 cases, and lower in the list low scores also cover styles that
+sold 2–3× their forecast (Kelso, Therese tee), so it is a flag to check stock and trend, not a correction.
 
 ## 5. Top 3 and why
 
@@ -168,7 +172,8 @@ flowchart TD
   (validation, 404/422 JSON, CORS, images); `schemas.py` holds the Pydantic models.
   - Endpoints: `/styles/top`, `/styles/{id}`, `/seasons`, `/model/summary`, `/health`, `/images`.
 - **frontend/:** Streamlit, talking only to the API; images are fetched server-side.
-  - Pages: top styles, style detail (chart, reasons, concept), model performance, seasonal view, concepts.
+  - Pages: overview (KPIs, the 3 picks, how to read the scores), top styles (search, filters, CSV download), style
+    detail (chart, reasons, concept, previous/next), model performance, seasonal view, concepts.
 - **Agentic layer (bonus):** a Claude Agent SDK orchestrator with 4 sub-agents, 3 MCP servers (`retail`,
   `forecast`, `image`) and the `style-dna-brief` skill.
   - Guard-rails are in code: a permission gate (writes only under `outputs/`), an image budget (≤ 4 new images,
