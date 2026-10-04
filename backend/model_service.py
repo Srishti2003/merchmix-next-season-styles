@@ -18,6 +18,7 @@ SEASON_FILES = {"AW2020": config.OUT_DIR / "predictions.json", "SS2020": config.
 DEFAULT_SEASON = "AW2020"
 SUMMARY_PATH = config.OUT_DIR / "model_summary.json"
 IMAGE_PREFIX = "/images"
+_COPY_SUFFIX = re.compile(r"\s*\(\d+\)\s*$")
 _REASON = re.compile(r"^(?P<feature>.+?) = (?P<value>.+?) → (?P<direction>raises|lowers) the forecast "
                      r"×(?P<mult>[\d.]+) vs the last-week run-rate$")
 
@@ -45,6 +46,11 @@ def normalize_style_id(raw: str) -> str:
     if not s.isdigit() or len(s) > 7:
         raise StyleNotFound(s, f"Malformed style_id {s!r}: expected up to 7 digits (a product_code, e.g. 0751471).")
     return s.zfill(7)
+
+
+def display_name(raw: str | None) -> str | None:
+    """'Pluto RW slacks (1)' -> 'Pluto RW slacks': drop the trailing copy number articles.csv adds to some names."""
+    return _COPY_SUFFIX.sub("", raw) if raw else raw
 
 
 def plain_reason(raw: str) -> dict:
@@ -113,7 +119,8 @@ class ModelService:
     def summary(self, s: dict) -> dict:
         hist = s["sales_history_26w"]
         return {
-            "style_id": s["style_id"], "name": s["name"], "rank": s["rank"], "forecast_rank": s["forecast_rank"],
+            "style_id": s["style_id"], "name": display_name(s["name"]), "raw_name": s["name"], "rank": s["rank"],
+            "forecast_rank": s["forecast_rank"],
             "prediction_score": s["prediction_score"], "confidence_top1pct": s["confidence_top1pct"],
             "forecast_units": s["forecast_units"], "category": self._category(s),
             "sales_history": {"last_8_weeks": [{"week_start": w["week_start"], "units": w["units"]} for w in hist[-8:]],
@@ -140,11 +147,11 @@ class ModelService:
         head = f"Forecast rank #{s['forecast_rank']} ({s['forecast_units']:,.0f} units)"
         if same is not None:
             return (f"{head}; not in the top 3 because {group} is already represented by #{same['rank']} "
-                    f"{same['name']} ({same['forecast_units']:,.0f} units forecast).")
+                    f"{display_name(same['name'])} ({same['forecast_units']:,.0f} units forecast).")
         if not s["performance"].get("units_last_2w"):
             return f"{head}; not in the top 3 because it did not sell in the last 2 weeks (availability proxy)."
         third = self.selected[-1]
-        return f"{head}; not in the top 3: its forecast is below #3 {third['name']} ({third['forecast_units']:,.0f} units)."
+        return f"{head}; not in the top 3: its forecast is below #3 {display_name(third['name'])} ({third['forecast_units']:,.0f} units)."
 
     def concept(self, s: dict) -> dict | None:
         """Generated concept for a top-3 style (from the published evidence files), else None."""
@@ -175,7 +182,8 @@ class ModelService:
         refs = [u for u in (self.image_url(p) for p in self._reference_paths(s)) if u]
         return {
             "season": self.season, "cutoff": self.meta["cutoff"], "forecast_window": self.meta["forecast_window"],
-            "style_id": s["style_id"], "name": s["name"], "rank": s["rank"], "forecast_rank": s["forecast_rank"],
+            "style_id": s["style_id"], "name": display_name(s["name"]), "raw_name": s["name"], "rank": s["rank"],
+            "forecast_rank": s["forecast_rank"],
             "prediction_score": s["prediction_score"], "confidence_top1pct": s["confidence_top1pct"],
             "p_top0_1pct": s["p_top0_1pct"], "forecast_units": s["forecast_units"], "category": self._category(s),
             "attributes": s["attributes"], "performance": s["performance"],

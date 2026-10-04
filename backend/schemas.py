@@ -33,7 +33,8 @@ class ForecastWindow(BaseModel):
 
 class StyleSummary(BaseModel):
     style_id: str = Field(description="product_code: 7 digits, all colour variants of one design")
-    name: str | None
+    name: str | None = Field(description="display name (trailing copy number such as ' (1)' removed)")
+    raw_name: str | None = Field(description="product name as in articles.csv")
     rank: int | None = Field(description="1-3 for the selected winners, null for every other style")
     forecast_rank: int = Field(description="position by forecast units among all scored styles")
     prediction_score: float = Field(description="calibrated P(style is a top-0.1% seller over the next 4 weeks)")
@@ -61,7 +62,7 @@ class TopStylesResponse(BaseModel):
         "season": "AW2020", "season_label": "Autumn/Winter 2020 (forecast)", "observed": False,
         "cutoff": "2020-09-23", "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
         "total": 200, "limit": 1, "offset": 0,
-        "styles": [{"style_id": "0751471", "name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
+        "styles": [{"style_id": "0751471", "name": "Pluto RW slacks", "raw_name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
                     "prediction_score": 1.0, "confidence_top1pct": 1.0, "forecast_units": 7417.3,
                     "category": {"product_type": "Trousers", "garment_group": "Trousers"},
                     "sales_history": {"last_8_weeks": [{"week_start": "2020-09-16", "units": 1711}],
@@ -125,7 +126,8 @@ class StyleDetail(BaseModel):
     cutoff: date
     forecast_window: ForecastWindow
     style_id: str
-    name: str | None
+    name: str | None = Field(description="display name (trailing copy number such as ' (1)' removed)")
+    raw_name: str | None = Field(description="product name as in articles.csv")
     rank: int | None
     forecast_rank: int
     prediction_score: float
@@ -144,7 +146,7 @@ class StyleDetail(BaseModel):
 
     model_config = ConfigDict(json_schema_extra={"examples": [{
         "season": "AW2020", "cutoff": "2020-09-23", "forecast_window": {"start": "2020-09-23", "end": "2020-10-20"},
-        "style_id": "0751471", "name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
+        "style_id": "0751471", "name": "Pluto RW slacks", "raw_name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
         "prediction_score": 1.0, "confidence_top1pct": 1.0, "p_top0_1pct": 1.0, "forecast_units": 7417.3,
         "category": {"product_type": "Trousers", "garment_group": "Trousers"},
         "attributes": {"colour_group_name": "Black", "n_colours": 10},

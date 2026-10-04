@@ -27,9 +27,18 @@ def test_top_list(client: TestClient) -> None:
     assert set(first) >= {"style_id", "name", "prediction_score", "confidence_top1pct", "forecast_units", "rank",
                           "category", "sales_history", "image_url"}
     assert first["category"] == {"product_type": "Trousers", "garment_group": "Trousers"}
+    assert first["name"] == "Pluto RW slacks" and first["raw_name"] == "Pluto RW slacks (1)"
     assert len(first["sales_history"]["last_8_weeks"]) == 8
     assert first["sales_history"]["units_last_4w"] == 9182
     assert first["image_url"] is None or first["image_url"].startswith("/images/refs/0751471/")
+
+
+@pytest.mark.parametrize("raw, shown", [("Pluto RW slacks (1)", "Pluto RW slacks"), ("Edda top(1)", "Edda top"),
+                                         ("Lucy blouse", "Lucy blouse"), ("Rose thong 7-pack(2)", "Rose thong 7-pack"),
+                                         (None, None)])
+def test_display_name_strips_copy_number(raw, shown) -> None:
+    from backend.model_service import display_name
+    assert display_name(raw) == shown
 
 
 def test_offset_paginates(client: TestClient) -> None:

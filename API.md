@@ -112,7 +112,7 @@ curl "localhost:8000/styles/top?limit=2"
   "total": 200, "limit": 2, "offset": 0,
   "styles": [
     {
-      "style_id": "0751471", "name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
+      "style_id": "0751471", "name": "Pluto RW slacks", "raw_name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
       "prediction_score": 1.0, "confidence_top1pct": 1.0, "forecast_units": 7417.3,
       "category": {"product_type": "Trousers", "garment_group": "Trousers"},
       "sales_history": {
@@ -147,7 +147,7 @@ curl localhost:8000/styles/751471
 ```
 ```json
 {
-  "style_id": "0751471", "name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
+  "style_id": "0751471", "name": "Pluto RW slacks", "raw_name": "Pluto RW slacks (1)", "rank": 1, "forecast_rank": 1,
   "prediction_score": 1.0, "confidence_top1pct": 1.0, "p_top0_1pct": 1.0, "forecast_units": 7417.3,
   "category": {"product_type": "Trousers", "garment_group": "Trousers"},
   "attributes": {"product_group_name": "Garment Lower body", "garment_group_name": "Trousers",
@@ -185,9 +185,11 @@ curl localhost:8000/styles/751471
 }
 ```
 
+- `name` is the display name: a trailing copy number such as `" (1)"` is removed. `raw_name` is the name as in
+  articles.csv.
 - The 5 `reasons` are the regressor's TreeSHAP drivers; each is a multiplier on the naive "last week × 4" forecast.
 - `why_selected` also explains non-selection, e.g. `GET /styles/0706016` (Jade, forecast rank 2): *"Forecast rank #2
-  (6,854 units); not in the top 3 because Trousers is already represented by #1 Pluto RW slacks (1) (7,417 units
+  (6,854 units); not in the top 3 because Trousers is already represented by #1 Pluto RW slacks (7,417 units
   forecast)."*
 - `concept` is `null` for every style outside the top 3. For RICHIE (`0685814`) the critic did not approve the final
   concept (`"decision": "revise"`, `"status": "Critic: not approved"`): the image model did not change the hoodie's

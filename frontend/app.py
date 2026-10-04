@@ -134,6 +134,20 @@ def sidebar(seasons: list[dict]) -> tuple[str, str]:
 
 
 # --- pages --------------------------------------------------------------------------------------------------------
+def skipped_caption(styles: list[dict]) -> str:
+    """Explain the per-garment-group rule with the highest-ranked style it skipped."""
+    rule = "Top 3 = highest forecast per garment group"
+    picks = {s["category"]["garment_group"]: s for s in styles if s["rank"]}
+    last = max((s["forecast_rank"] for s in picks.values()), default=0)
+    skipped = next((s for s in sorted(styles, key=lambda s: s["forecast_rank"])
+                    if not s["rank"] and s["forecast_rank"] < last and s["category"]["garment_group"] in picks), None)
+    if skipped is None:
+        return rule + "."
+    group = skipped["category"]["garment_group"]
+    return (f"{rule}, so {skipped['name']} (#{skipped['forecast_rank']} by units) is skipped because {group} is "
+            f"already covered by {picks[group]['name']}.")
+
+
 def page_top(season: str) -> None:
     head = api("/styles/top", limit=200, offset=0, season=season)
     st.header("Top predicted styles")
@@ -160,16 +174,18 @@ def page_top(season: str) -> None:
                 open_style(s["style_id"])
 
     st.subheader("All styles")
+    st.caption(skipped_caption(head["styles"]))
     f1, f2 = st.columns([3, 1])
     groups = sorted({s["category"]["garment_group"] for s in head["styles"] if s["category"]["garment_group"]})
     chosen = f1.multiselect("Garment group", groups, placeholder="All garment groups")
     limit = f2.slider("Number of styles", 10, 200, 50, step=10)
-    rows = [s for s in head["styles"][:limit] if not chosen or s["category"]["garment_group"] in chosen]
+    by_rank = sorted(head["styles"], key=lambda s: s["forecast_rank"])
+    rows = [s for s in by_rank[:limit] if not chosen or s["category"]["garment_group"] in chosen]
     if not rows:
         st.info("No styles match the filter.")
         return
     df = pd.DataFrame([{
-        "Rank": f"#{s['rank']}" if s["rank"] else "", "By units": s["forecast_rank"], "Photo": thumbnail_uri(s["image_url"]),
+        "Rank": s["forecast_rank"], "Top-3 pick": "✓" if s["rank"] else "", "Photo": thumbnail_uri(s["image_url"]),
         "Style": s["style_id"], "Name": s["name"], "Prediction score": s["prediction_score"],
         "Confidence (top 1%)": s["confidence_top1pct"], "Forecast units": round(s["forecast_units"]),
         **({"Actual units": s["actual_units"]} if head["observed"] else {}),
@@ -179,8 +195,8 @@ def page_top(season: str) -> None:
         df, hide_index=True, width="stretch", height=min(57 * len(df) + 40, 900), row_height=56,
         on_select="rerun", selection_mode="single-row", key=f"table_{season}",
         column_config={
-            "Rank": st.column_config.TextColumn(width=50, help="selected top 3"),
-            "By units": st.column_config.NumberColumn(format="%d", width=65, help="rank by forecast units"),
+            "Rank": st.column_config.NumberColumn(format="%d", width=55, help="rank by forecast units"),
+            "Top-3 pick": st.column_config.TextColumn(width=75, help="one of the 3 selected styles"),
             "Photo": st.column_config.ImageColumn(width=60),
             "Style": st.column_config.TextColumn(width=70),
             "Name": st.column_config.TextColumn(width=190),
@@ -211,10 +227,12 @@ def sales_chart(d: dict) -> alt.Chart:
         layers.append(act)
     data = pd.concat(layers, ignore_index=True)
     names = ["Weekly units (history)", "Forecast (weekly average)", "Actual weekly units"][:len(layers)]
+    top = float(data["units"].max() or 0) * 1.08 or 1
     colors = alt.Scale(domain=names, range=["#2a78d6", "#eb6834", "#1baf7a"][:len(layers)])
     base = alt.Chart(data).encode(
         x=alt.X("week_start:T", title="Week starting"),
-        y=alt.Y("units:Q", title="Units per week", axis=alt.Axis(format=",d")),
+        y=alt.Y("units:Q", title="Units per week", axis=alt.Axis(format=",d"),
+                scale=alt.Scale(domain=[0, top], nice=False, clamp=False)),
         color=alt.Color("series:N", scale=colors, legend=alt.Legend(orient="bottom", title=None, labelLimit=260)),
         tooltip=[alt.Tooltip("week_start:T", title="Week"), alt.Tooltip("units:Q", format=",.0f"), "series:N"])
     line = base.mark_line(point=True).encode(strokeDash=alt.condition(
@@ -246,6 +264,7 @@ def page_detail(season: str) -> None:
     rank = f"#{d['rank']} (selected)" if d["rank"] else f"forecast rank #{d['forecast_rank']}"
     st.caption(f"{d['category']['product_type']} · {d['category']['garment_group']} · {rank} · "
                f"window {d['forecast_window']['start']} → {d['forecast_window']['end']}")
+    st.space("small")  # keeps the image's hover toolbar (expand icon) clear of the subtitle
 
     left, right = st.columns([1, 2])
     with left:
@@ -283,6 +302,7 @@ def page_detail(season: str) -> None:
     for r in d["explanation"]["reasons"]:
         arrow = "▲" if r["direction"] == "raises" else "▼" if r["direction"] == "lowers" else "•"
         st.markdown(f"{arrow} {r['text']}")
+    st.markdown("Big recent weeks are partly discounted, since sales tend to fall back after a spike.")
     st.caption("Drivers are the regressor's top-5 SHAP contributions, each a multiplier on 'last week × 4'.")
 
     c = d.get("concept")
@@ -326,6 +346,9 @@ def page_performance() -> None:
                                 "Precision@12": f"{r['precision@12']['mean']:.3f} ± {r['precision@12']['std']:.3f}"}
                                for r in reg["backtest"]]), hide_index=True, width="stretch")
     st.caption(" · ".join(f"Wins on NDCG@50 vs {w['baseline']}: {w['wins']}/{w['of']}" for w in reg["ndcg50_wins"]))
+    st.caption("Precision@12 = share of the predicted top 12 that are in the actual top 12; k = 12 matches the H&M "
+               "Kaggle competition's MAP@12. The regressor's precision at 20 and 50 against the winner labels is in "
+               "the classifier tables below (row 'LightGBM regressor (units)').")
 
     for key, title in (("classifier_top1pct", "Winner classifier, top 1% label"),
                        ("classifier_top0.1pct", "Winner classifier, top 0.1% label (the displayed score)")):

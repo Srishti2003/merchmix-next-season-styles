@@ -50,9 +50,14 @@ def test_top_page_renders(api) -> None:
     assert not at.exception
     assert at.header[0].value == "Top predicted styles"
     text = _text(at)
-    assert "#1 Pluto RW slacks (1)" in text and "#3 RICHIE HOOD" in text
+    assert "#1 Pluto RW slacks" in text and "(1)" not in text and "#3 RICHIE HOOD" in text
     assert "Critic: not approved" in text  # RICHIE's concept is shown honestly
-    assert len(at.dataframe) == 1 and len(at.dataframe[0].value) == 50
+    assert ("so Jade HW Skinny Denim TRS (#2 by units) is skipped because Trousers is already covered by "
+            "Pluto RW slacks.") in text
+    table = at.dataframe[0].value
+    assert len(at.dataframe) == 1 and len(table) == 50
+    assert list(table["Rank"][:4]) == [1, 2, 3, 4]
+    assert list(table["Top-3 pick"][:4]) == ["✓", "", "✓", "✓"]
 
 
 def test_detail_page_renders_for_top3(api) -> None:
@@ -63,14 +68,15 @@ def test_detail_page_renders_for_top3(api) -> None:
         at.run()
     assert not at.exception
     text = _text(at)
-    assert at.header[0].value.startswith("Pluto RW slacks (1)")
+    assert at.header[0].value == "Pluto RW slacks  ·  0751471"
     assert "Selected #1" in text and "KEEP" in text and "CHANGE" in text and "Critic: approved" in text
     assert sum(1 for m in at.markdown if m.value.startswith(("▲", "▼"))) == 5
+    assert "Big recent weeks are partly discounted" in text
 
 
 def test_seasonal_and_performance_pages_render(api) -> None:
     with mock.patch("httpx.get", side_effect=_mock_get(api)):
-        for page, expect in (("seasonal", "7/10"), ("performance", "Regressor vs baselines")):
+        for page, expect in (("seasonal", "7/10"), ("performance", "k = 12 matches")):
             at = AppTest.from_file(APP, default_timeout=60)
             at.query_params["page"] = page
             at.run()
