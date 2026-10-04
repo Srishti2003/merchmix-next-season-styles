@@ -262,7 +262,6 @@ def main() -> None:
         print(f"{name}: {len(preds):,} styles scored at {c}")
     winners = select_top_k(preds)
     recs = write_evidence(winners, config.FINAL_CUTOFF, snap, booster)
-    preds.head(50).to_csv(config.OUT_DIR / "predictions_top50.csv", index=False)
 
     print("\nTop-3 (diversified by garment group):")
     for r in recs:

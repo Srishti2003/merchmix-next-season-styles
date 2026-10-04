@@ -1,197 +1,204 @@
-# Write-up: next-season style forecast → AI product concepts (H&M data)
+# Write-up: next-season style intelligence (H&M data)
 
-**Result:** `outputs/final_board.png` (3 winners → 3 concepts) · evidence: `outputs/evidence_sheet.png`,
-`outputs/evidence/<code>/lineage.json` · agent trace: `outputs/runs/20260928-005623/trace.jsonl`.
+**Deliverables:** top 3 in `outputs/predictions.json` · concepts in `outputs/generated_concepts.png` · evidence in
+`outputs/evidence_sheet.png` and `outputs/evidence/<code>/` · API in `backend/` ([API.md](API.md)) · app in
+`frontend/app.py`. Every number below comes from a committed output file, which is named next to it.
 
-## 1. Approach in one paragraph
-Transactions (31.8M rows, Sep 2018 – 22 Sep 2020) are aggregated to **styles** (`product_code`, i.e. all colour
-variants of one design) per Wed→Tue week. A LightGBM model, trained on 45 weekly snapshots, forecasts each
-style's units for the next 4 weeks. The top-3 are picked with a diversity rule (one per garment group) and an
-availability proxy (must have sold in the last 2 weeks). An agentic workflow then turns each winner into a new
-product concept. Claude Agent SDK orchestrator → forecaster, style-analyst (reusable `style-dna-brief`
-skill), designer (FLUX.1 Kontext image edit) and critic (CLIP novelty + visual check) sub-agents, all working
-through MCP tools. Every step is written to `lineage.json`.
+## 1. Problem definition
 
-## 2. Key choices
-- **Style = `product_code`.** Colourways of one design share the same "DNA"; ranking articles would give three
-  colours of one trouser. Winners sell in 10–23 colours, which is also the evidence that *shape*, not colour,
-  is what customers buy.
-- **"Strong" = most units in the next 4 weeks** (buyers are tracked too). Units is what a merchandiser plans.
-- **Why a 4-week horizon, and how that relates to "next season".**
-  - *Fast fashion turns over quickly.* The median style sells for 19 active weeks, and 32% of weekly units
-    come from styles launched in the last 12 weeks (EDA). Over a full 12–13-week season, a large share of
-    demand comes from styles that don't exist yet, so a style-level history model can't forecast them. Four
-    weeks is the longest window where "which existing styles will lead" is still well defined and testable.
-  - *The cutoff is the season boundary.* Data ends 22 Sep 2020, so the 4 weeks (23 Sep – 20 Oct) are the
-    opening of autumn. The seasonal bonus shows the same pipeline switches with the season: at a late-May
-    cutoff swimwear is 38% of the top-100's predicted units, and in late September it's 0%, with upper-body
-    garments up 32 points.
-  - *"Next season" is carried by the concepts, not the forecast.* The forecast finds the styles winning as
-    the season opens. The generated concepts are next-season *products* that keep those styles' proven DNA,
-    i.e. input to the next buying cycle, not a forecast of it.
-  - *Honest limit.* The model is not validated beyond 4 weeks. `HORIZON_WEEKS` is one config value, but a
-    12-week run was not tested, so no accuracy claim is made for it.
-- **Weekly snapshots, no leakage.** Features use only weeks before the cutoff (tests scramble future data and
-  check the features don't change). The target is the 4 weeks from the cutoff.
-- **Model target = uplift over the naive run-rate.** A plain log-units regressor lost to "last week × 4" at the
-  top of the ranking, so the model predicts `log1p(next 4w) − log1p(4 × last week)`, weighted toward
-  high-volume styles. A LambdaRank variant was tried and lost (NDCG@50 0.846 vs 0.944 on the inner cutoffs).
-- **Selection:** at most one style per garment group (a board of three trousers is not useful). "Sold in the
-  last 2 weeks" is the *only* availability signal. **The dataset has no stock data** (see §6).
+A fashion retailer wants to know which existing styles will lead next, and wants new products that build on them.
 
-## 3. Model results: honest version
-Validation week (cutoff 26 Aug → 22 Sep 2020, 20,639 styles) and a 10-cutoff rolling backtest (each cutoff
-scored by a model trained only on earlier data):
+- **Style** = `product_code` (all colourways of one design; `style_id` = 7 digits). Colourways share the design
+  "DNA"; ranking articles would return three colours of one trouser. The winners sell in 10–23 colours, which also
+  shows that customers buy the *shape*, not the colour. `product_code` = `article_id // 1000` for every article, so
+  the id is stable.
+- **Success** = the style's units in the next 4 weeks rank in the **top 1% of styles active at that cutoff**
+  (sold in the previous 12 weeks). The threshold is set per cutoff (857–1,512 units across the scored cutoffs;
+  about 194 winners of ~19,300 styles). A rank-based threshold fits the decision, because a buyer reviews a
+  short list, and it isn't distorted by seasonal swings or the 2020 COVID dip.
+- **Prediction period** = the 4 weeks after the cutoff. Data ends 22 Sep 2020, so the forecast covers
+  **23 Sep – 20 Oct 2020**, the opening of autumn. Styles turn over fast: the median style sells for 19 active
+  weeks, and 32% of weekly units come from styles launched in the last 12 weeks. Over a 13-week season much of the
+  demand comes from styles that don't exist yet, so 4 weeks is the longest window where "which existing styles
+  will lead" is still well defined and testable. "Next season" is carried by the concepts, which are new products
+  built on the winners' proven DNA.
 
-| | Model | Last week × 4 | Last 4 weeks | Same 4 wks last year |
+## 2. Data & EDA
+
+**Used in full:** all 31.8M transactions (20 Sep 2018 – 22 Sep 2020), 105,542 articles and 1.37M customers, kept
+outside the repo and converted to Parquet. **Images:** only the 9 reference photos of the 3 winners, plus one list
+photo per top-50 style for the app (the full set is about 30 GB). The forecast doesn't use images, so the ranking
+is unaffected. The concepts only see each winner's best-selling colours.
+
+Findings (`outputs/figures/eda_insights.md`, `data_science/notebooks/02_eda_extended.ipynb`):
+- **Seasonality:** weekly units swing 3.6× (177k to 636k). Swimwear is 38% of the predicted summer top-100 and 0%
+  in autumn.
+- **Long tail:** in the last 52 weeks the top 1% of styles took 31% of units.
+- **Newness:** 32% of weekly units come from styles under 12 weeks old (range 20–46%).
+- **Customers:** age is bimodal (peaks at 21 and 51; 1.16% missing). Ages 25–34 buy 36.4% of units. Online is
+  66.7–74.8% of units in every age band (69% → 73% from 2019 to 2020).
+- **Data quality:**
+  - *Duplicate rows:* 9.36% of transaction rows exactly repeat another row (same customer, day, article, price,
+    channel). The raw CSV gives the same count, they occur on every day, and their frequency falls steeply with
+    group size, which fits multiple units in one purchase. Each row is kept as one unit.
+  - *Prices* are scaled by Kaggle (max ≈ 0.59). Within product type, 0.26% are low outliers and 0.04% high; they are
+    kept.
+  - *Coverage:* no missing dates. 995 articles never sold, and 0.39% of articles lack a description.
+
+## 3. Approach & model selection
+
+Transactions are aggregated with DuckDB to a weekly style table (Wed → Tue weeks). For each weekly cutoff, a
+snapshot holds **23 features computed only from weeks before the cutoff**:
+- momentum: units over 1/2/4/8/12 weeks, plus trend ratios;
+- buyers, repeat rate and online share;
+- price and discount vs peak price;
+- weeks since launch and same period last year;
+- six product attributes.
+
+The target is units in the 4 weeks from the cutoff. There are 45 training snapshots (2019-09-25 → 2020-07-29),
+and tests scramble future data to check that the features don't change.
+
+- **Regressor for ranking.** LightGBM predicts `log1p(next 4 weeks) − log1p(4 × last week)`, the uplift over the
+  naive run-rate, weighted toward high-volume styles. A plain log-units regressor lost to "last week × 4" at the top
+  of the ranking, and a LambdaRank variant lost on the inner cutoffs (NDCG@50 0.846 vs 0.944). The regressor gives
+  unit forecasts, which a merchandiser plans with, and it ranks the list.
+- **Classifiers for calibrated scores.** Two LightGBM binary models (top 1% and top 0.1% labels) are trained on the
+  same features and folds. Their probabilities are calibrated with isotonic maps fitted **only on out-of-fold
+  predictions whose labels were known at each cutoff** (OOF cutoff ≤ cutoff − 4 weeks).
+  - P(top 1%) saturates at 1.0 for 17 of the regressor's top 20 styles.
+  - P(top 0.1%) spreads out (10 distinct values, 0.038–1.000), so it is the displayed `prediction_score`.
+  - P(top 1%) is kept as `confidence_top1pct`.
+- **Selection:** highest forecast units, at most one style per garment group, sold in the last 2 weeks (the only
+  availability signal).
+
+## 4. Results
+
+Every model is retrained at each cutoff on cutoffs whose target ended before it: a 10-cutoff rolling backtest
+(2020-05-27 → 2020-07-29) plus the validation week (cutoff 2020-08-26).
+
+| Backtest mean (10 cutoffs) | Model | Last week × 4 | Last 4 weeks | Regressor |
 |---|---|---|---|---|
-| NDCG@50, validation week | 0.862 | **0.864** | 0.569 | 0.601 |
-| precision@12, validation week | 0.417 | **0.500** | 0.250 | 0.167 |
-| NDCG@50, backtest mean ± std | **0.924 ± 0.031** | 0.906 ± 0.040 | 0.906 ± 0.016 | n/a |
-| Model wins on NDCG@50 (backtest) | n/a | **7/10** | **7/10** | n/a |
+| Regressor NDCG@50 | **0.924** ± 0.031 | 0.906 ± 0.040 | 0.906 ± 0.016 | – |
+| Regressor precision@12 | **0.725** | 0.708 | 0.658 | – |
+| Classifier top 1%, PR-AUC | 0.770 | 0.738 | 0.713 | **0.771** |
+| Classifier top 0.1%, PR-AUC | **0.807** | 0.750 | 0.743 | 0.796 |
 
-- Against **"last 4 weeks"** (which lags momentum) the win is clear on the validation week (0.862 vs 0.569),
-  but in the 10-week backtest it's the same small margin as against last-week × 4 (0.924 vs 0.906, 7/10 wins).
-  Against the strong naive baseline **"last week × 4" it wins 7/10 backtest weeks on NDCG@50 but only ties it
-  on the validation week**, and on precision@12 it wins 3/10 (6 ties).
-- **Where the value is (`outputs/figures/movers.md`):** when the model ranks a style far *below* the
-  baseline it is usually right (6/10, mostly one-week spikes that fade); when it ranks one far *above* it is
-  usually wrong (3/10, mostly late-summer swimwear). So the model's value is **demoting fading styles, not
-  finding new risers.**
-- SHAP (`shap_summary.png`): one-week spikes get shrunk; heavily discounted, end-of-life styles are faded;
-  young styles get a boost. All three winners share the same top upward driver, *still near full price*.
-- **The three winners share a pattern** (checked against forecast.json and the weekly sales): all are
-  early-autumn risers (last 4 weeks = 1.9–2.6× the 4 weeks before) whose September rise the model partly
-  discounts (forecast −19%, −2%, −10% vs the last 4 weeks). They win on sustained volume at near full price
-  (1–2% below peak price), not markdowns.
-- Seasonal bonus: at the summer cutoff, 7 of the predicted top-10 were in the actual top-10.
+Sources: `outputs/figures/eval_table.md`, `outputs/classifier/eval_classifier.md`, `eval_classifier_top0.1pct.md`.
 
-## 4. From forecast to concept (lineage)
-For each winner, `outputs/evidence/<code>/` holds `forecast.json` (rank, forecast, SHAP drivers, attributes) →
-`brief.json` (KEEP/CHANGE, validated by `skills_lib/style_dna.py`) → `generation_log.jsonl` (exact prompt,
-seed, model; input photos in `outputs/refs/` are H&M/Kaggle data, downloaded by `data_science/select.py` and not included) → `critic.jsonl` (decision, CLIP scores, note) → `lineage.json` (links all of these, plus the
-board caption and the briefed changes the image did not render).
+- **Regressor vs naive baselines:**
+  - It wins 7/10 cutoffs on NDCG@50 against both baselines.
+  - On precision@12 it beats last week × 4 at only 3/10 (6 ties).
+  - On the validation week it **ties last week × 4** (NDCG@50 0.862 vs 0.864) and clearly beats last 4 weeks (0.569).
+  - Its value is **demoting fading styles**: where it disagrees with last week × 4, its demotions were right 6/10,
+    its promotions 3/10 (`outputs/figures/movers.md`).
+- **Classifiers:**
+  - They beat the naive baselines: top 1% is ahead of last week × 4 on PR-AUC at 9/10 cutoffs.
+  - They **tie the regressor** (0.770 vs 0.771), so they don't rank better.
+  - The top-0.1% model even loses to last week × 4 on the validation week (PR-AUC 0.456 vs 0.566). Its score is a
+    relative-strength signal, not a better ranker.
+- **Calibration:** isotonic lowers the top-1% ECE from 0.00361 to 0.00282 (backtest) and from 0.00271 to 0.00225
+  (validation). For top 0.1% the change (0.00041 → 0.00044) is within noise (2 standard errors = 0.00006), and
+  Brier improves at 8/11 cutoffs.
 
-| Winner | Forecast (next 4 wks) | Final concept | Critic | CLIP to own photos |
+<img src="outputs/classifier/reliability.png" alt="Reliability of the top-1% classifier, raw vs calibrated" width="360">
+
+**Seasonal check (bonus):** the same pipeline at the 27 May 2020 cutoff put 7 of its predicted top 10 in the actual
+top 10 (`outputs/figures/seasonal_comparison.md`).
+
+## 5. Top 3 and why
+
+| # | Style | Forecast (last 4 wks) | prediction_score | Main SHAP drivers (× on last week × 4) |
 |---|---|---|---|---|
-| #1 Pluto RW slacks (trousers) | 7,417 | concept_2: glen check, camel side stripe | approved | 0.726 |
-| #2 Lucy blouse | 6,492 | concept_1: burgundy satin, fuller gathered sleeves | approved | 0.690 |
-| #3 RICHIE HOOD | 5,486 | concept_2: grey, zip pockets, striped cuffs | **not approved** | 0.797 |
+| 1 | Pluto RW slacks, Trousers | 7,417 (9,182) | 1.00 | last week 1,711 ×0.62 · momentum 0.75 ×0.74 · discount 2% ×1.21 · last 2 weeks ×1.16 |
+| 2 | Lucy blouse, Blouses | 6,492 (6,662) | 0.94 | last week 1,705 ×0.62 · momentum 1.02 ×0.64 · discount 1% ×1.23 · last 2 weeks ×1.15 |
+| 3 | RICHIE HOOD, Jersey Basic | 5,486 (6,108) | 1.00 | last week 1,165 ×0.62 · momentum 0.76 ×0.75 · discount 1% ×1.24 · last 2 weeks ×1.16 |
 
-**Manual interventions (approved by the user, logged with notes):** (1) a third RICHIE HOOD attempt beyond the
-one-revision rule, also rejected, so the board keeps concept_2 and says the critic did not approve it;
-(2) Pluto regenerated from the run's own brief so its lineage is clean (the run had reused an image made from a
-hand-written test prompt). Board captions were checked by eye; briefed changes the image model did not render
-(e.g. Pluto's cropped hem, RICHIE's cropped boxy shape) are not claimed.
+- **What they share:** all three are early-autumn risers (last 4 weeks = 1.9–2.6× the 4 weeks before) whose
+  September rise the model partly discounts. They win on sustained volume at near full price (1–2% below peak),
+  not markdowns.
+- **Why perennial basics aren't there:**
+  - Jade HW Skinny Denim (forecast rank 2) is a trouser, and Pluto has the higher forecast (7,417 vs 6,854).
+  - Cat Tee is in RICHIE's garment group with far fewer forecast units (2,682, rank 29).
+  - Long-running basics also teach the design team little that's new. That is a judgement, not a rule: RICHIE has
+    sold for 97 weeks too.
 
-## 5. Agentic workflow
-Orchestrator (Claude Agent SDK, Sonnet) with 4 sub-agents, 3 stdio MCP servers (`retail`, `forecast`,
-`image`) plus an in-process `run` server for deterministic bookkeeping, and 1 skill. Guard-rails live in code,
-not prompts: a permission gate (whitelist; writes only under `outputs/`), an image budget (≤ 4 new images and
-≤ 1 revision per run; identical requests reuse the file), and lineage assembled from files, not typed by the
-LLM. The run: 7 min, 59 tool calls across 5 agents, 3 GPU generations.
+Per-style drivers, history and lineage: `outputs/evidence/<code>/forecast.json` and the app's Style detail page.
 
-## 6. Limitations
-- **No stock data → censored demand.** A style that sold out looks like a weak seller; "sold in the last 2
-  weeks" only filters out styles that are clearly gone. Real use needs inventory/OTB data.
-- **New styles have no history**, and 32% of units come from them. This model can only rank existing styles.
-- **2020 is COVID-distorted** (online share 69% → 73%); last-year features are weaker than usual.
-- **Image model:** FLUX Kontext changes fabric, colour and trims well but **did not change a garment's
-  proportions** in three hoodie attempts, and small chest labels reappear.
-- **CLIP is a weak novelty proxy:** it barely reacts to colour (colourways of one style score 0.80–0.94), so the
-  "too close" threshold was calibrated to 0.80 and the critic also checks the images visually.
-- **Brief validator gap:** Pluto's brief KEEPs "solid colour" while CHANGING to a check. The rule check does not
-  catch KEEP-vs-CHANGE contradictions yet.
-- Single retailer, single season boundary; the backtest covers 10 summer weeks.
+## 6. Concepts and how each links to its prediction
 
-## 7. Issues we hit (engineering)
-- **scikit-learn replaced because of a device policy.** The laptop's Application Control policy blocks
-  sklearn's compiled DLL (`sklearn.utils.murmurhash`). Its only use, `ndcg_score`, is now a pure-numpy
-  function with identical behaviour (tie-averaged gains, log2 discount, 0 when the ideal DCG is 0, mean over
-  rows). It reproduces the sklearn-computed validation NDCG@50 values exactly, and tests pin hard-coded
-  values, **so all reported results are unchanged.** (`shap` still imports sklearn, so only the two SHAP *plots*
-  can't be regenerated on that laptop; the SHAP drivers use LightGBM's built-in TreeSHAP.)
-- Reproducibility: DuckDB's `mode()` tie-breaking and multithreaded LightGBM made reruns drift; both are fixed.
-- Agent SDK: sub-agents run asynchronously in this CLI version, and an unanswerable permission prompt blocked
-  the critic in a dry run. Fixed with a code-based permission gate and a harness that waits for all sub-agents.
-  Four mock dry runs were done before spending real GPU quota.
-- Free Hugging Face GPU quota (~5–10 images/day) instead of a paid API: hence the budget guards.
+![Three winners and their next-season concepts](outputs/generated_concepts.png)
 
-## 8. What I'd do next at Merchmix
-Plug in inventory and open-to-buy so selection is stock-aware; add new-style cold-start (attribute-similarity
-to past launches); route concepts to a buyer approval queue with the lineage attached; and extend the critic
-with a shape check (silhouette/edge comparison) instead of relying on CLIP.
+**How each concept is built.** For each winner, the brief (`brief.json`) KEEPs what the data says sells and CHANGEs
+fabric, colour, trims or proportion.
+- *KEEP:* the shape that sells across colourways, the details visible in the photos and description, and the
+  near-full-price quality.
+- *Image:* FLUX.1 Kontext edits the best-selling colourway's photo.
+- *Critic:* checks novelty with CLIP similarity to the style's own photos, plus a visual check.
+- *Lineage:* `lineage.json` links forecast → brief → prompt → critic → board caption, and lists briefed changes the
+  image didn't render.
 
-## 9. Full-stack phase 1: success definition, winner classifier, extended EDA
-Numbers in this section come from `outputs/classifier/{eval_classifier.md, eval_classifier_top0.1pct.md,
-final_scores.md}` and `data_science/notebooks/02_eda_extended.ipynb`.
+| Winner | Why it won (forecast) | Concept | Critic | CLIP to own photos |
+|---|---|---|---|---|
+| Pluto RW slacks | 7,417 units; near full price | glen check, camel side stripe | approved | 0.726 |
+| Lucy blouse | 6,492 units; near full price | burgundy satin, fuller gathered sleeves | approved | 0.690 |
+| RICHIE HOOD | 5,486 units; near full price | grey, zip pockets, striped cuffs | **not approved** | 0.797 |
 
-**Success definition.** A style is a *winner* if its units in the next 4 weeks rank in the **top 1% of styles
-active at that cutoff** (sold in the previous 12 weeks). The threshold is set per cutoff, not globally, so it moves
-with the season (857–1,512 units across the scored cutoffs; about 194 winners out of ~19,300 active styles). Top 1%
-matches the decision: a buyer can follow up on a short list, not thousands of styles. And because it's a rank
-rather than a fixed unit count, it isn't distorted by seasonal swings or by the 2020 COVID dip.
+**RICHIE:** the brief asked for a cropped, boxy shape, which the image model never produced in three attempts, so
+the board says the critic did not approve it. **Pluto:** it was regenerated from the run's own brief so that its
+lineage is clean. Both interventions were approved by the user and logged.
 
-**Why 4 weeks.** See §2. In short, styles turn over fast (median 19 active weeks, 32% of units from styles under 12
-weeks old). Four weeks is the longest window in which "which existing styles will lead" can be tested honestly, and
-from the 23 Sep cutoff those 4 weeks are the opening of autumn.
+## 7. Architecture
 
-**Stock limitation.** There's no stock or availability data, so observed sales are *censored demand*: a style that
-sold out, or was never fully ranged in a store, looks like a weak seller. The model learns these as decliners and
-will under-rank styles that were held back by supply. The reverse also happens: a style with deep stock and a
-markdown can look like a riser. "Sold in the last 2 weeks" removes only styles that are clearly gone. No inventory
-assumptions were added.
+```mermaid
+flowchart TD
+  A[H&M CSVs] --> B[data_science: DuckDB + features]
+  B --> C[LightGBM regressor + classifiers]
+  C --> D[predictions.json · model_summary.json]
+  D --> E[backend: FastAPI]
+  E --> F[frontend: Streamlit]
+  C -.-> G[agents: forecaster → analyst → designer → critic]
+  G -.-> H[evidence/ · generated_concepts.png]
+  H --> E
+```
 
-**Extra data that would help, in order of value:** stock on hand and availability by store/size (to un-censor
-demand); the markdown calendar and planned promotions (to separate price-driven from organic demand); returns (net
-units, and to catch fit problems); web traffic such as views, add-to-cart and searches (an early demand signal before
-sales); store footfall (to normalise store sales); size curves (to see whether a style is limited by broken sizes).
+- **data_science/:** data layer, features, regressor with backtest (`model.py`), classifiers and calibration
+  (`classify.py`). `train.py` runs the pipeline; `predict.py` and `summary.py` write the JSON files the API serves.
+  Nothing in the API retrains.
+- **backend/:** `model_service.py` loads the predictions once and has no web code; `api.py` handles HTTP only
+  (validation, 404/422 JSON, CORS, images); `schemas.py` holds the Pydantic models.
+  - Endpoints: `/styles/top`, `/styles/{id}`, `/seasons`, `/model/summary`, `/health`, `/images`.
+- **frontend/:** Streamlit, talking only to the API; images are fetched server-side.
+  - Pages: top styles, style detail (chart, reasons, concept), model performance, seasonal view, concepts.
+- **Agentic layer (bonus):** a Claude Agent SDK orchestrator with 4 sub-agents, 3 MCP servers (`retail`,
+  `forecast`, `image`) and the `style-dna-brief` skill.
+  - Guard-rails are in code: a permission gate (writes only under `outputs/`), an image budget (≤ 4 new images,
+    ≤ 1 revision), and lineage built from files.
+  - The run took 7 minutes: 59 tool calls and 3 GPU generations.
 
-**Classifier result.** A LightGBM binary classifier on the same 23 features, with the same 10-cutoff rolling backtest
-and no leakage. The isotonic calibrator used at each cutoff is fitted only on out-of-fold predictions whose labels
-were already known there.
-- **It beats the naive baselines:** backtest PR-AUC 0.770 vs 0.738 for last week × 4 (ahead at 9/10 cutoffs) and
-  0.713 for last 4 weeks (10/10). Precision@50 is 0.986 vs 0.938.
-- **It ties the regressor:** PR-AUC 0.770 vs 0.771, with the classifier ahead at 5/10 cutoffs. Precision@50 gives
-  5 wins and 4 ties.
-- **Its value is a calibrated probability, not a better ranking.** Isotonic calibration lowers ECE from 0.00361 to
-  0.00282 (backtest) and from 0.00271 to 0.00225 (validation). Raw probabilities above 0.4 were overconfident.
-- **Saturation:** at the final cutoff, P(top 1%) is ≥ 0.999 for 17 of the regressor's top-20 styles, so it can't
-  separate them.
-- **Stricter top-0.1% label (about 20 winners per cutoff).** Its calibrated probabilities spread out where P(top 1%)
-  saturates: 10 distinct values among the regressor's top 20, from 0.038 to 1.000. Calibration changed its backtest
-  ECE from 0.00041 to 0.00044, which is within noise (2 standard errors of the per-cutoff change = 0.00006), and
-  improved Brier at 8 of 11 cutoffs. **This is the displayed `prediction_score`.**
-- **Its weakness:** on the validation week the top-0.1% classifier ranks worse than last week × 4 (PR-AUC 0.456 vs
-  0.566) and the regressor (0.514). In the backtest it is ahead of last week × 4 on PR-AUC at only 6 of 10
-  cutoffs. So it is a **relative-strength signal**: how likely the style is to be among the very top ~20, given
-  everything the model knows. It is not a better ranker.
-- **What the scores mean in the outputs:** the ranking and the top 3 stay the regressor's forecast units.
-  `prediction_score` is the calibrated P(top 0.1%): Pluto 1.000, Lucy 0.942, RICHIE 1.000. `confidence_top1pct` is
-  the calibrated P(top 1%), 1.000 for all three.
+## 8. Limitations
 
-**Why perennial basics such as Jade HW Skinny Denim and Cat Tee are not in the top 3.**
-- *The rule allows one style per garment group.* Jade is a trouser, and Pluto, also a trouser, has the higher
-  forecast (7,417 vs 6,854 units).
-- *Forecast volume.* Cat Tee is in the same garment group as RICHIE (Jersey Basic) and has a much lower forecast
-  (2,682 units, regressor rank 29, vs 5,486). It reached the classifier's top 3 only because P(top 1%) ties at 1.000
-  for 24 styles, and tiny differences in raw probability decided the order.
-- *Design value.* Jade has sold in 99 consecutive weeks and sold 12,527 units in the same 4 weeks last year. A
-  never-out-of-stock basic tells the design team little that's new. This is a judgement, not part of the rule:
-  RICHIE has also sold for 97 weeks.
+- **No stock data → censored demand.** A sold-out style looks like a weak seller, so the model learns supply-limited
+  styles as decliners. "Sold in the last 2 weeks" only removes styles that are clearly gone; no inventory
+  assumptions were added. **Data that would help:**
+  - stock and availability by store/size;
+  - the markdown calendar and promotions;
+  - returns;
+  - web traffic (views, add-to-cart, searches);
+  - store footfall;
+  - size curves.
+- **Horizon:** validated for 4 weeks only. A season-long forecast was not tested, so no accuracy claim is made for it.
+- **Cold start:** new styles have no history, and 32% of units come from them. Only existing styles can be ranked.
+- **Small gains over the naive baseline:** last week × 4 is strong, and 2020 is COVID-distorted.
+- **Images:** FLUX Kontext changes fabric, colour and trims, but didn't change the hoodie's proportions, and small
+  chest labels reappear. CLIP barely reacts to colour (colourways of one style score 0.80–0.94), so the critic also
+  checks images visually. The brief validator doesn't catch KEEP-vs-CHANGE contradictions (Pluto KEEPs "solid
+  colour" while changing to a check).
 
-**EDA findings (extended notebook).**
-1. **Duplicate rows are multi-unit purchases, not errors.** 9.36% of transaction rows are exact repeats of another
-   row; the raw CSV with the real customer_id gives the same count. They occur on every day (6.1–15.7% of daily
-   rows), and their frequency falls steeply with group size, with small bumps at 6 and 8. Each row is kept as one
-   unit.
-2. **Customers are bimodal by age:** peaks at 21 and 51, 1.16% missing. Ages 25–34 buy 36.4% of units.
-3. **Online share is 66.7–74.8% of units in every age band**, highest for 25–34. Trousers, dresses and sweaters
-   lead the categories in every band.
-4. **Data quality:** no missing dates (734 of 734 days); 995 articles (390 styles) never sold; 0.39% of articles
-   have no description; `product_code` matches `article_id // 1000` for every article, so `style_id` is stable.
-   Prices are scaled (max ≈ 0.59), with 0.26% low and 0.04% high outliers within product type, which are kept.
+## 9. Future improvements
 
-**Sampling.** Full transactions, articles and customers. Images only for the 3 winners (9 photos; the full set is
-about 30 GB). The forecast does not use images, so its ranking is unaffected. The concepts see only each winner's
-three best-selling colours.
+- **Stock-aware selection:** plug in inventory and open-to-buy, and model demand as censored.
+- **Cold start:** attribute-similarity to past launches, so new styles can be scored.
+- **Longer horizons:** a season-level forecast with its own backtest.
+- **Concepts:** a shape check in the critic (silhouette/edge comparison) instead of relying on CLIP.
+- **Workflow:** route concepts to a buyer approval queue with the lineage attached.
+- **Monitoring:** retrain weekly and track calibration drift.

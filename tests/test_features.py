@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -11,11 +12,15 @@ import config
 from data_science import data, features
 
 CUTOFF = date(2020, 3, 4)
+HAS_DATA = Path(config.ARTICLES_PATH).exists() and (
+    data.STYLE_WEEKLY_CACHE.exists() or bool(list(Path(config.TX_GLOB).parent.glob("part_*.parquet"))))
 
 
 @pytest.fixture(scope="module")
 def sw() -> pd.DataFrame:
-    """Full weekly style table."""
+    """Full weekly style table (skips when the transaction data has not been downloaded/converted)."""
+    if not HAS_DATA:
+        pytest.skip("H&M data not available: run scripts/convert_data.py and set HM_DATA_DIR")
     return data.style_weekly()
 
 
