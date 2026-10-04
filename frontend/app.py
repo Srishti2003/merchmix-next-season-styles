@@ -26,6 +26,26 @@ PAGE_KEYS = {"overview": "Overview", "top": "Top styles", "detail": "Style detai
 PAGE_IDS = {v: k for k, v in PAGE_KEYS.items()}
 TTL = 60
 BLUE, ORANGE, GREEN, GREY = "#2a78d6", "#eb6834", "#1baf7a", "#52514e"
+MUTED = "#8a8984"  # baselines in comparison charts, and chart text; readable on light and dark surfaces
+ICONS = {"Overview": ":material/dashboard:", "Top styles": ":material/format_list_numbered:",
+         "Style detail": ":material/checkroom:", "Model performance": ":material/insights:",
+         "Seasonal view": ":material/date_range:", "Concepts": ":material/palette:"}
+GLOSSARY = (
+    ("Prediction score", "The calibrated chance that a style is a top-0.1% seller (about the best 20) over the next "
+                         "4 weeks."),
+    ("Chance of top 1%", "The same chance for the best 1% of active styles (about 200)."),
+    ("Forecast units", "Expected units sold over the 4-week forecast window."),
+    ("NDCG@50", "How closely the top 50 of the list matches the real best sellers, best first (1 = perfect)."),
+    ("PR-AUC", "How well a score separates winners from the rest across all thresholds (1 = perfect)."),
+    ("Precision@k", "The share of the top k styles on the list that really were winners (or in the actual top k)."),
+    ("Calibration / ECE", "Whether a score of 0.3 really comes true about 30% of the time; ECE is the average gap "
+                          "(0 = perfect)."),
+)
+CSS = """<style>
+section[data-testid="stSidebar"] div[data-testid="stSidebarHeader"] { height: 2.25rem; padding-top: .5rem; }
+section[data-testid="stSidebar"] div[data-testid="stSidebarUserContent"] { padding-top: 0; }
+div.block-container { padding-top: 2.5rem; }
+</style>"""
 
 HELP = {
     "score": "Prediction score: the calibrated chance that the style is a top-0.1% seller (about the best 20 styles) "
@@ -157,12 +177,15 @@ def sidebar(seasons: list[dict]) -> tuple[str, str]:
     with st.sidebar:
         st.title("Merchmix")
         st.caption("Next-season style intelligence · H&M data")
-        page = st.radio("Page", PAGES, key="nav", label_visibility="collapsed")
+        page = st.radio("Page", PAGES, key="nav", label_visibility="collapsed",
+                        format_func=lambda p: f"{ICONS[p]} {p}")
         labels = {s["id"]: f"{s['id']} · {'backtest' if s['observed'] else 'forecast'}" for s in seasons}
         season = st.selectbox("Season", ids, key="season", format_func=lambda i: labels[i])
         s = next(x for x in seasons if x["id"] == season)
         st.caption(f"Cutoff {s['cutoff']} · window {window_text(s['forecast_window'])}"
                    + (" · actuals available" if s["observed"] else ""))
+        with st.expander("Glossary", icon=":material/menu_book:"):
+            st.markdown("\n".join(f"- **{term}**: {text}" for term, text in GLOSSARY))
     qp["page"] = PAGE_IDS[page]
     qp["season"] = season
     if page != "Style detail" and "style_id" in qp:
@@ -183,14 +206,16 @@ def page_overview(season: str) -> None:
     st.header("Overview")
     st.caption(f"{head['season_label']}: which styles will sell best in the next 4 weeks, and why.")
     w = head["forecast_window"]
-    k = st.columns([1, 1.6, 1, 1])
-    k[0].metric("Styles scored", num(head["n_styles_scored"]), help=HELP["scored"], border=True)
-    k[1].metric(f"Forecast window ({pd.Timestamp(w['end']):%Y})",
-                f"{pd.Timestamp(w['start']):%-d %b}–{pd.Timestamp(w['end']):%-d %b}", help=HELP["window"], border=True)
-    k[2].metric("Top-3 forecast units", num(sum(s["forecast_units"] for s in top3)), help=HELP["top3"], border=True)
+    k = st.columns(4)
+    tile = {"border": True, "height": 132, "delta_color": "off", "delta_arrow": "off"}  # equal tiles
+    k[0].metric("Styles scored", num(head["n_styles_scored"]), delta="active in the last 12 weeks",
+                help=HELP["scored"], **tile)
+    k[1].metric("Forecast window", "4 weeks", delta=window_text(w), help=HELP["window"], **tile)
+    k[2].metric("Top-3 forecast units", num(sum(s["forecast_units"] for s in top3)), delta="over the 4 weeks",
+                help=HELP["top3"], **tile)
     if base:
-        k[3].metric("Beats last week × 4", f"{base['wins']}/{base['of']}", help=HELP["vs_baseline"],
-                    border=True)
+        k[3].metric("Beats last week × 4", f"{base['wins']}/{base['of']}", delta="backtest weeks",
+                    help=HELP["vs_baseline"], **tile)
     if base and model_bt and base_bt:
         st.markdown(f"**The model ranks the coming best sellers better than repeating last week's sales in "
                     f"{base['wins']} of {base['of']} backtest weeks** (NDCG@50 {model_bt['ndcg@50']['mean']:.3f} vs "
@@ -210,16 +235,15 @@ def page_overview(season: str) -> None:
             if st.button("Open style →", key=f"ov_{s['style_id']}", width="stretch"):
                 open_style(s["style_id"])
 
-    with st.container(border=True):
-        st.markdown("**How to read this**")
-        st.markdown(
-            "- **Prediction score**: the chance (0–1) that a style is a top-0.1% seller, about the best 20 styles, "
-            "over the next 4 weeks.\n"
-            "- **Forecast units**: expected units sold over those 4 weeks.\n"
-            "- **Chance of top 1%**: the chance of being in the best 1% (about 200 styles); most top-50 styles are "
-            "close to 1.\n"
-            "- **Pick #1–3**: the highest forecast in each garment group among styles still selling, so the picks "
-            "cover different kinds of garment.")
+    st.info(
+        "**How to read this**\n\n"
+        "- **Prediction score**: the chance (0–1) that a style is a top-0.1% seller, about the best 20 styles, "
+        "over the next 4 weeks.\n"
+        "- **Forecast units**: expected units sold over those 4 weeks.\n"
+        "- **Chance of top 1%**: the chance of being in the best 1% (about 200 styles); most top-50 styles are "
+        "close to 1.\n"
+        "- **Pick #1–3**: the highest forecast in each garment group among styles still selling, so the picks "
+        "cover different kinds of garment.", icon=":material/lightbulb:")
 
     st.subheader("Explore")
     links = (("Top styles", "Search, filter and download every scored style in the top 200."),
@@ -451,10 +475,9 @@ def page_detail(season: str) -> None:
 
     st.subheader("Why the model picked it")
     st.markdown(f"**{d['explanation']['why_selected']}**")
-    for r in d["explanation"]["reasons"]:
-        arrow = "▲" if r["direction"] == "raises" else "▼" if r["direction"] == "lowers" else "•"
-        st.markdown(f"{arrow} {r['text']}")
-    st.markdown("Big recent weeks are partly discounted, since sales tend to fall back after a spike.")
+    marks = {"raises": ":green[▲]", "lowers": ":red[▼]"}
+    st.markdown("\n".join(f"- {marks.get(r['direction'], '•')} {r['text']}" for r in d["explanation"]["reasons"]))
+    st.caption("Big recent weeks are partly discounted, since sales tend to fall back after a spike.")
     st.caption("Drivers are the regressor's top-5 SHAP contributions, each a multiplier on 'last week × 4'.")
 
     c = d.get("concept")
@@ -502,31 +525,84 @@ def merchandiser_summary(m: dict) -> list[str]:
     return out
 
 
+METRIC_HELP = {
+    "Method": "The model or the rule of thumb it is compared with",
+    "NDCG@50": "How closely the top 50 of the list matches the real best sellers, best first (1 = perfect)",
+    "Precision@12": "Share of the predicted top 12 that are in the actual top 12",
+    "PR-AUC": "How well the score separates winners from the rest across all thresholds (1 = perfect)",
+    "P@20": "Share of the 20 highest-scored styles that were winners",
+    "P@50": "Share of the 50 highest-scored styles that were winners",
+    "PR-AUC (valid.)": "PR-AUC on the validation week (cutoff 2020-08-26)",
+}
+CONTEXT_CARDS = (("success_definition", "What counts as a winner", ":material/emoji_events:",
+                  "A style whose next-4-week units rank in the top 1% of active styles; the displayed score uses the "
+                  "stricter top 0.1%."),
+                 ("horizon", "Why 4 weeks", ":material/schedule:",
+                  "Styles turn over fast, so 4 weeks is the longest window that can be tested honestly."),
+                 ("stock_caveat", "Stock caveat", ":material/inventory_2:",
+                  "There is no stock data, so a sold-out style can look like a weak seller."))
+
+
+def method_bars(rows: list[tuple[str, float]], metric: str) -> alt.Chart:
+    """Horizontal bars, one per method; the LightGBM models in blue, the rules of thumb in grey."""
+    df = pd.DataFrame(rows, columns=["Method", metric])
+    df["Kind"] = ["Model" if m.startswith("LightGBM") else "Baseline" for m in df["Method"]]
+    y = alt.Y("Method:N", sort=None, title=None, scale=alt.Scale(paddingInner=0.35),
+              axis=alt.Axis(labelLimit=220, labelOverlap=False, ticks=False, domain=False))
+    x = alt.X(f"{metric}:Q", scale=alt.Scale(domain=[0, 1]), title=metric, axis=alt.Axis(grid=False, tickCount=5))
+    bars = alt.Chart(df).mark_bar(cornerRadiusEnd=4, height=16).encode(
+        y=y, x=x, color=alt.Color("Kind:N", scale=alt.Scale(domain=["Model", "Baseline"], range=[BLUE, MUTED]),
+                                  legend=None),
+        tooltip=["Method", alt.Tooltip(f"{metric}:Q", format=".3f")])
+    labels = alt.Chart(df).mark_text(align="left", dx=4, color=MUTED).encode(
+        y=y, x=x, text=alt.Text(f"{metric}:Q", format=".3f"))
+    return (bars + labels).properties(height=alt.Step(30))
+
+
 def page_performance() -> None:
     m = api("/model/summary")
     st.header("Model performance")
-    with st.container(border=True):
-        st.markdown("**What this means for a merchandiser**")
-        st.markdown("\n".join(f"- {b}" for b in merchandiser_summary(m)))
-    a, b, c = st.columns(3)
-    a.markdown(f"**Success definition.** {m['success_definition']}")
-    b.markdown(f"**Why 4 weeks.** {m['horizon']}")
-    c.markdown(f"**Stock caveat.** {m['stock_caveat']}")
+    reg, clf = m["regressor"], m["classifier_top0.1pct"]
+    bt = {r["method"]: r for r in reg["backtest"]}
+    cm = {r["method"]: r["backtest"] for r in clf["methods"]}
+    wins = next((w for w in reg["ndcg50_wins"] if w["baseline"] == "Last week × 4"), None)
+    k = st.columns(3)
+    if "LightGBM regressor" in bt and "Last week × 4" in bt:
+        a, b = bt["LightGBM regressor"]["ndcg@50"]["mean"], bt["Last week × 4"]["ndcg@50"]["mean"]
+        k[0].metric("Ranking quality (NDCG@50)", f"{a:.3f}", delta=f"{a - b:+.3f} vs last week × 4", border=True,
+                    help=f"{METRIC_HELP['NDCG@50']}. Regressor, mean over the {reg['backtest_cutoffs']} backtest weeks.")
+    if "LightGBM classifier" in cm and "Last week × 4" in cm:
+        a, b = cm["LightGBM classifier"]["pr_auc"], cm["Last week × 4"]["pr_auc"]
+        k[1].metric("Winner classifier PR-AUC", f"{a:.3f}", delta=f"{a - b:+.3f} vs last week × 4", border=True,
+                    help=f"{METRIC_HELP['PR-AUC']}. Top-0.1% classifier (the displayed score), backtest mean.")
+    if wins:
+        k[2].metric("Backtest weeks won", f"{wins['wins']}/{wins['of']}", border=True,
+                    help="Weeks where the regressor's NDCG@50 beat last week × 4.")
+
+    st.info("**What this means for a merchandiser**\n\n" + "\n".join(f"- {b}" for b in merchandiser_summary(m)),
+            icon=":material/storefront:")
+
+    for col, (key, title, icon, short) in zip(st.columns(3), CONTEXT_CARDS):
+        with col, st.container(border=True, height=215):
+            st.markdown(f"{icon} **{title}**")
+            st.caption(short)
+            with st.expander("Full text"):
+                st.markdown(m[key])
     st.caption(m["ranking"])
 
-    reg = m["regressor"]
-    st.subheader(f"Regressor vs baselines ({reg['backtest_cutoffs']}-cutoff rolling backtest)")
-    st.dataframe(pd.DataFrame([{"Method": r["method"],
-                                "NDCG@50": f"{r['ndcg@50']['mean']:.3f} ± {r['ndcg@50']['std']:.3f}",
-                                "Precision@12": f"{r['precision@12']['mean']:.3f} ± {r['precision@12']['std']:.3f}"}
-                               for r in reg["backtest"]]), hide_index=True, width="stretch",
-                 column_config={"NDCG@50": st.column_config.TextColumn(
-                                    help="How well the top 50 of the list matches the real best sellers (1 = perfect)"),
-                                "Precision@12": st.column_config.TextColumn(
-                                    help="Share of the predicted top 12 that are in the actual top 12")})
+    st.subheader(f"Regressor vs baselines ({reg['backtest_cutoffs']}-week rolling backtest)")
+    st.altair_chart(method_bars([(r["method"], r["ndcg@50"]["mean"]) for r in reg["backtest"]], "NDCG@50"),
+                    width="stretch")
     st.caption(" · ".join(f"Wins on NDCG@50 vs {w['baseline']}: {w['wins']}/{w['of']}" for w in reg["ndcg50_wins"]))
-    st.caption("@12 follows the H&M Kaggle competition's MAP@12 convention; the regressor's P@20/@50 are in the "
-               "classifier tables below.")
+    with st.expander("Show numbers"):
+        st.dataframe(pd.DataFrame([{"Method": r["method"],
+                                    "NDCG@50": f"{r['ndcg@50']['mean']:.3f} ± {r['ndcg@50']['std']:.3f}",
+                                    "Precision@12": f"{r['precision@12']['mean']:.3f} ± {r['precision@12']['std']:.3f}"}
+                                   for r in reg["backtest"]]), hide_index=True, width="stretch",
+                     column_config={c: st.column_config.TextColumn(help=METRIC_HELP[c])
+                                    for c in ("Method", "NDCG@50", "Precision@12")})
+        st.caption("Mean ± standard deviation over the backtest weeks. @12 follows the H&M Kaggle competition's MAP@12 "
+                   "convention; the regressor's P@20/@50 are in the classifier tables below.")
 
     for key, title in (("classifier_top1pct", "Winner classifier, top 1% label"),
                        ("classifier_top0.1pct", "Winner classifier, top 0.1% label (the displayed score)")):
@@ -534,28 +610,26 @@ def page_performance() -> None:
         st.subheader(title)
         t, p = st.columns([3, 2])
         with t:
-            st.dataframe(pd.DataFrame([{"Method": r["method"], "PR-AUC": r["backtest"]["pr_auc"],
-                                        "P@20": r["backtest"]["precision@20"], "P@50": r["backtest"]["precision@50"],
-                                        "PR-AUC (valid.)": r["validation"]["pr_auc"]}
-                                       for r in clf["methods"]]),
-                         hide_index=True, width="stretch",
-                         column_config={
-                             "PR-AUC": st.column_config.NumberColumn(
-                                 format="%.3f", help="How well the score separates winners from the rest (1 = perfect)"),
-                             "P@20": st.column_config.NumberColumn(format="%.3f",
-                                                                   help="Share of the top 20 that were winners"),
-                             "P@50": st.column_config.NumberColumn(format="%.3f",
-                                                                   help="Share of the top 50 that were winners"),
-                             "PR-AUC (valid.)": st.column_config.NumberColumn(
-                                 format="%.3f", help="PR-AUC on the validation week (cutoff 2020-08-26)")})
-            st.caption("PR-AUC, P@20 and P@50 (precision at 20/50) are 10-cutoff backtest means; "
-                       "valid. = the validation week (cutoff 2020-08-26).")
+            st.altair_chart(method_bars([(r["method"], r["backtest"]["pr_auc"]) for r in clf["methods"]], "PR-AUC"),
+                            width="stretch")
             cal = clf["calibration"]
             st.caption(f"About {clf['winners_per_cutoff']:.0f} winners per cutoff. Classifier ahead of last week × 4 "
                        f"on PR-AUC at {clf['pr_auc_wins_vs_last_week_x4']}/{clf['backtest_cutoffs']} cutoffs. "
                        f"Calibration (isotonic, earlier folds only), mean of per-cutoff values: ECE {cal['ece_raw']:.5f} → "
                        f"{cal['ece_calibrated']:.5f}, Brier {cal['brier_raw']:.5f} → {cal['brier_calibrated']:.5f}. "
                        "The plot legend shows ECE pooled over all 11 cutoffs.")
+            with st.expander("Show numbers"):
+                st.dataframe(pd.DataFrame([{"Method": r["method"], "PR-AUC": r["backtest"]["pr_auc"],
+                                            "P@20": r["backtest"]["precision@20"],
+                                            "P@50": r["backtest"]["precision@50"],
+                                            "PR-AUC (valid.)": r["validation"]["pr_auc"]}
+                                           for r in clf["methods"]]),
+                             hide_index=True, width="stretch",
+                             column_config={"Method": st.column_config.TextColumn(help=METRIC_HELP["Method"]),
+                                            **{c: st.column_config.NumberColumn(format="%.3f", help=METRIC_HELP[c])
+                                               for c in ("PR-AUC", "P@20", "P@50", "PR-AUC (valid.)")}})
+                st.caption("PR-AUC, P@20 and P@50 are 10-cutoff backtest means; valid. = the validation week "
+                           "(cutoff 2020-08-26).")
         with p:
             show_image(clf.get("reliability_plot_url"), "Reliability: raw vs calibrated")
 
@@ -583,6 +657,12 @@ def page_seasonal(season: str) -> None:
     seasons = {s["id"]: s for s in api("/seasons")["seasons"]}
     st.caption("The same pipeline at two cutoffs. SS2020 (cutoff 27 May 2020) is in the data, so predictions can be "
                "compared with what actually sold; AW2020 is the forecast. Use the sidebar to browse either season.")
+    for sid, s in seasons.items():
+        if s["observed"]:
+            ranks = [r["actual_rank"] for r in sorted(api("/styles/top", limit=200, season=sid)["styles"],
+                                                      key=lambda x: x["forecast_rank"])[:10]]
+            st.success(f"**{sum(r <= 10 for r in ranks)} of the predicted top 10 were in the actual top 10** "
+                       f"({sid} backtest).", icon=":material/check_circle:")
     for sid in ("SS2020", "AW2020"):
         if sid not in seasons:
             continue
@@ -596,7 +676,10 @@ def page_seasonal(season: str) -> None:
                             **({"Actual": r["actual_units"], "Actual rank": r["actual_rank"],
                                 "In actual top 10": "✓" if r["actual_rank"] <= 10 else "✗"} if s["observed"] else {})}
                            for r in rows])
-        st.dataframe(df, hide_index=True, width="stretch",
+        hit = "background-color: rgba(27, 175, 122, 0.12)"  # subtle green, readable in light and dark mode
+        table = (df.style.apply(lambda row: [hit if row["In actual top 10"] == "✓" else ""] * len(row), axis=1)
+                 .format({"Forecast": "{:,}", "Actual": "{:,}"}) if s["observed"] else df)
+        st.dataframe(table, hide_index=True, width="stretch",
                      column_config={"#": st.column_config.NumberColumn(width=40, help=HELP["rank"]),
                                     "Forecast": st.column_config.NumberColumn(format="localized", help=HELP["units"]),
                                     "Actual": st.column_config.NumberColumn(format="localized", help=HELP["actual"]),
@@ -664,6 +747,7 @@ def page_concepts() -> None:
 
 def main() -> None:
     st.set_page_config(page_title="Merchmix style intelligence", page_icon="👗", layout="wide")
+    st.html(CSS)
     try:
         seasons = api("/seasons")["seasons"]
         page, season = sidebar(seasons)

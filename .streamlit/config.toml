@@ -9,6 +9,10 @@ gatherUsageStats = false
 font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
 headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
 baseRadius = "medium"
+# h1 (sidebar brand) · h2 (page titles) · h3 (sections) · h4–h6
+headingFontSizes = ["1.75rem", "1.6rem", "1.2rem", "1rem", "0.9rem", "0.8rem"]
+headingFontWeights = [700, 600, 600, 600, 600, 600]
+metricValueFontSize = "1.85rem"
 showSidebarBorder = true
 
 [theme.light]

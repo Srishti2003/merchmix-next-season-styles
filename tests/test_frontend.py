@@ -40,7 +40,7 @@ def _mock_get(api):
 
 
 def _text(at: AppTest) -> str:
-    parts = [e.value for e in (*at.markdown, *at.caption, *at.header, *at.subheader)]
+    parts = [e.value for e in (*at.markdown, *at.caption, *at.header, *at.subheader, *at.info, *at.success)]
     return "\n".join(str(p) for p in parts)
 
 
@@ -58,11 +58,13 @@ def test_overview_is_the_landing_page(api) -> None:
         assert at.header[0].value == "Overview"
         metrics = {m.label: m.value for m in at.metric}
         assert metrics["Styles scored"] == "20,318"
-        assert metrics["Forecast window (2020)"] == "23 Sep–20 Oct"
+        assert metrics["Forecast window"] == "4 weeks"
         assert metrics["Beats last week × 4"] == "7/10"
         assert all(m.help for m in at.metric)  # every metric has a tooltip
         text = _text(at)
-        assert "How to read this" in text and "Pick #3 · rank 4 by units" in text
+        assert "How to read this" in at.info[0].value and "Pick #3 · rank 4 by units" in text
+        assert any(getattr(e, "label", None) == "Glossary" for e in at.sidebar.children.values())  # icon expander
+        assert "NDCG@50" in text and "PR-AUC" in text and "Calibration / ECE" in text  # glossary entries
         at.button(key="ov_0685814").click().run()  # winner card -> detail
         assert not at.exception
         assert at.header[0].value == "RICHIE HOOD  ·  0685814"
@@ -119,7 +121,8 @@ def test_detail_page_renders_for_top3(api) -> None:
         text = _text(at)
         assert at.header[0].value == "Pluto RW slacks  ·  0751471"
         assert "Selected #1" in text and "KEEP" in text and "CHANGE" in text and "Critic: approved" in text
-        assert sum(1 for m in at.markdown if m.value.startswith(("▲", "▼"))) == 5
+        reasons = next(m.value for m in at.markdown if ":green[▲]" in m.value or ":red[▼]" in m.value)
+        assert len(reasons.splitlines()) == 5 and all(line.startswith("- :") for line in reasons.splitlines())
         assert "Big recent weeks are partly discounted" in text
         assert at.button(key="prev").disabled
         at.button(key="next").click().run()  # next by forecast rank
@@ -141,13 +144,21 @@ def test_seasonal_and_performance_pages_render(api) -> None:
         at = _run(api, page="seasonal")
         assert not at.exception
         text = _text(at)
+        assert "7 of the predicted top 10 were in the actual top 10" in at.success[0].value
         assert "7/10" in text and "Risk flag" in text and "C Lolly Top" in text
         assert "In actual top 10" in at.dataframe[0].value.columns
         at = _run(api, page="performance")
         assert not at.exception
         text = _text(at)
-        assert "What this means for a merchandiser" in text
+        assert "What this means for a merchandiser" in at.info[0].value
         assert "@12 follows the H&M Kaggle competition's MAP@12 convention" in text
+        metrics = {m.label: m for m in at.metric}
+        assert metrics["Ranking quality (NDCG@50)"].value == "0.924"
+        assert metrics["Ranking quality (NDCG@50)"].delta == "+0.018 vs last week × 4"
+        assert metrics["Winner classifier PR-AUC"].value == "0.807"
+        assert metrics["Backtest weeks won"].value == "7/10"
+        assert [e.label for e in at.main.expander].count("Show numbers") == 3
+        assert len(at.dataframe) == 3  # the exact tables, inside the expanders
 
 
 def test_api_down_shows_message() -> None:
