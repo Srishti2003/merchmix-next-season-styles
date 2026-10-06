@@ -2,10 +2,13 @@
 
 The predictions are produced offline by ``python -m data_science.predict``; the service only reads them, adds
 plain-language explanations and turns repo paths into image URLs (``/images/<path under outputs/>``). Images that
-are not on disk (reference photos are git-ignored Kaggle data) get a null URL so the frontend can show a placeholder.
+are not on disk (reference photos are git-ignored Kaggle data) get a null URL so the frontend can show a placeholder,
+except the top-3 winners: their reference photo is cropped from the committed concept board
+(``/images/board-ref/<style_id>.png``) when ``outputs/refs/`` is absent, e.g. on the hosted demo.
 """
 from __future__ import annotations
 
+import io
 import json
 import re
 from functools import cached_property
@@ -18,6 +21,16 @@ SEASON_FILES = {"AW2020": config.OUT_DIR / "predictions.json", "SS2020": config.
 DEFAULT_SEASON = "AW2020"
 SUMMARY_PATH = config.OUT_DIR / "model_summary.json"
 IMAGE_PREFIX = "/images"
+BOARD_REF_PREFIX = f"{IMAGE_PREFIX}/board-ref"
+BOARD_FILE = "generated_concepts.png"
+# Layout of image/board.py (copied, not imported, so the API does not depend on the image package): one column per
+# winner in rank order, reference photo at (MARGIN + i * (COL_W + GUTTER), BOARD_IMG_Y), framed by a 2 px rule.
+BOARD_MARGIN, BOARD_GUTTER = 48, 36
+BOARD_COL_W = (1920 - 2 * BOARD_MARGIN - 2 * BOARD_GUTTER) // 3
+BOARD_IMG_W = (BOARD_COL_W - 44) // 2
+BOARD_IMG_H = int(BOARD_IMG_W * 1.5)
+BOARD_IMG_Y = BOARD_MARGIN + 150 + 96
+BOARD_FRAME = 2
 _COPY_SUFFIX = re.compile(r"\s*\(\d+\)\s*$")
 _REASON = re.compile(r"^(?P<feature>.+?) = (?P<value>.+?) → (?P<direction>raises|lowers) the forecast "
                      r"×(?P<mult>[\d.]+) vs the last-week run-rate$")
@@ -85,6 +98,35 @@ class ModelService:
         rel = repo_path.removeprefix("outputs/")
         return f"{IMAGE_PREFIX}/{rel}" if (self.outputs_dir / rel).is_file() else None
 
+    @cached_property
+    def board_columns(self) -> dict[str, int]:
+        """style_id -> column of the committed concept board (winners with evidence, in forecast-rank order)."""
+        if not (self.outputs_dir / BOARD_FILE).is_file():
+            return {}
+        ranks = {}
+        for lin in sorted((self.outputs_dir / "evidence").glob("*/lineage.json")):
+            ranks[lin.parent.name] = json.loads(lin.read_text(encoding="utf-8"))["forecast"]["rank"]
+        return {code: i for i, code in enumerate(sorted(ranks, key=ranks.get)[:3])}
+
+    def board_ref_url(self, style_id: str) -> str | None:
+        return f"{BOARD_REF_PREFIX}/{style_id}.png" if style_id in self.board_columns else None
+
+    def board_ref_png(self, raw_id: str) -> bytes:
+        """The winner's reference photo, cropped from the committed board (no H&M photo file is committed)."""
+        from PIL import Image
+
+        code = normalize_style_id(raw_id)
+        if code not in self.board_columns:
+            raise StyleNotFound(code, f"No committed board photo for style {code} (only the top-3 winners have one).")
+        x = BOARD_MARGIN + self.board_columns[code] * (BOARD_COL_W + BOARD_GUTTER) + BOARD_FRAME
+        y = BOARD_IMG_Y + BOARD_FRAME
+        with Image.open(self.outputs_dir / BOARD_FILE) as board:
+            w, h = BOARD_IMG_W - 2 * BOARD_FRAME, BOARD_IMG_H - 2 * BOARD_FRAME
+            crop = board.convert("RGB").crop((x, y, x + w, y + h))
+        buf = io.BytesIO()
+        crop.save(buf, format="PNG")
+        return buf.getvalue()
+
     def _reference_paths(self, s: dict) -> list[str]:
         """Downloaded catalogue photos of the style, best-selling colourway first."""
         code = s["style_id"]
@@ -93,9 +135,14 @@ class ModelService:
         ordered = [n for n in names if n in on_disk] + [n for n in on_disk if n not in names]
         return [f"outputs/refs/{code}/{n}" for n in ordered]
 
+    def reference_urls(self, s: dict) -> list[str]:
+        """Image URLs of the downloaded photos; else the board crop for a top-3 winner; else []."""
+        refs = [u for u in (self.image_url(p) for p in self._reference_paths(s)) if u]
+        board = self.board_ref_url(s["style_id"])
+        return refs or ([board] if board else [])
+
     def primary_image_url(self, s: dict) -> str | None:
-        refs = self._reference_paths(s)
-        return self.image_url(refs[0]) if refs else None
+        return next(iter(self.reference_urls(s)), None)
 
     # --- queries ------------------------------------------------------------------------------------------
     @cached_property
@@ -170,7 +217,7 @@ class ModelService:
         caption = lineage.get("board_caption") or {}
         return {
             "image_url": self.image_url(final["path"]),
-            "reference_image_url": self.image_url(final.get("reference_image")),
+            "reference_image_url": self.image_url(final.get("reference_image")) or self.board_ref_url(s["style_id"]),
             "keep": [{"trait": k["trait"], "evidence": k.get("evidence")} for k in brief.get("keep", [])],
             "change": [{"axis": c["axis"], "from": c.get("from"), "to": c.get("to")} for c in brief.get("change", [])],
             "what_changed": caption.get("what_changed"),
@@ -181,7 +228,7 @@ class ModelService:
 
     def detail(self, raw_id: str) -> dict:
         s = self.get(raw_id)
-        refs = [u for u in (self.image_url(p) for p in self._reference_paths(s)) if u]
+        refs = self.reference_urls(s)
         return {
             "season": self.season, "cutoff": self.meta["cutoff"], "forecast_window": self.meta["forecast_window"],
             "style_id": s["style_id"], "name": display_name(s["name"]), "raw_name": s["name"], "rank": s["rank"],

@@ -86,7 +86,9 @@ calibrated probability. Sources: [`eval_table.md`](outputs/figures/eval_table.md
 
 **Link:** _to be added after the first Streamlit Community Cloud deploy._
 
-The hosted app runs from the committed `outputs/` (no data, no product photos: the app shows placeholders).
+The hosted app runs from the committed `outputs/` (no data). H&M catalogue photos can't be republished, so they are
+omitted except for the 3 winners, whose reference photo is cropped from the committed concept board; every other style
+shows an initials placeholder. Run `scripts/fetch_list_photos.py` locally to load the real photos (they take priority).
 
 - **Streamlit Community Cloud (free, no card):** main file `frontend/streamlit_app_cloud.py`, Python 3.11. That
   entrypoint starts the FastAPI backend inside the app container on `127.0.0.1:8000` and the frontend still talks to

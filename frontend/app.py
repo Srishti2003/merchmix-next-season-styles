@@ -25,6 +25,8 @@ PAGE_KEYS = {"overview": "Overview", "top": "Top styles", "detail": "Style detai
              "seasonal": "Seasonal view", "concepts": "Concepts"}
 PAGE_IDS = {v: k for k, v in PAGE_KEYS.items()}
 TTL = 60
+PHOTO_NOTE = ("Catalogue photo not included: H&M images can't be republished. Run scripts/fetch_list_photos.py "
+              "locally to load them.")
 BLUE, ORANGE, GREEN, GREY = "#2a78d6", "#eb6834", "#1baf7a", "#52514e"
 MUTED = "#8a8984"  # baselines in comparison charts, and chart text; readable on light and dark surfaces
 ICONS = {"Overview": ":material/dashboard:", "Top styles": ":material/format_list_numbered:",
@@ -75,24 +77,43 @@ def image_bytes(url: str | None) -> bytes | None:
 
 
 @st.cache_data(show_spinner=False)
-def placeholder(w: int = 300, h: int = 400, text: str = "No photo") -> bytes:
-    from PIL import Image, ImageDraw
+def placeholder(w: int = 300, h: int = 400, initials: str = "", label: str = "") -> bytes:
+    """Neutral stand-in for a missing photo: the style's initials and garment type on a soft card (2x for sharpness)."""
+    from PIL import Image, ImageDraw, ImageFont
 
-    img = Image.new("RGB", (w, h), (236, 235, 231))
+    s = 2
+    img = Image.new("RGB", (w * s, h * s), (243, 242, 238))
     d = ImageDraw.Draw(img)
-    tw = d.textlength(text)
-    d.text(((w - tw) / 2, h / 2 - 6), text, fill=(120, 119, 115))
+    d.rounded_rectangle([0, 0, w * s - 1, h * s - 1], radius=10 * s, outline=(222, 221, 216), width=s)
+    cx, cy = w * s / 2, h * s * 0.44
+    r = min(w, h) * s * (0.2 if h >= 160 else 0.4)  # bigger initials in table thumbnails
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(226, 225, 220))
+    if initials:
+        d.text((cx, cy), initials, font=ImageFont.load_default(size=r * 0.75), fill=(82, 81, 78), anchor="mm")
+    y = cy + r + h * s * 0.07
+    if h >= 160:  # table thumbnails are too small for text below the initials
+        for text, size, colour in ((label, h * s * 0.045, (82, 81, 78)),
+                                   ("Photo not included", h * s * 0.035, (138, 137, 132))):
+            if text:
+                d.text((cx, y), text, font=ImageFont.load_default(size=size), fill=colour, anchor="mm")
+                y += size * 1.5
     buf = io.BytesIO()
-    img.save(buf, format="PNG")
+    img.resize((w, h), Image.LANCZOS).save(buf, format="PNG")
     return buf.getvalue()
 
 
+def initials(name: str | None) -> str:
+    """'Pluto RW slacks' -> 'PR'; first letters of the first two words."""
+    words = [w for w in (name or "").split() if w[:1].isalnum()]
+    return "".join(w[0] for w in words[:2]).upper() or "?"
+
+
 @st.cache_data(ttl=TTL, show_spinner=False)
-def thumbnail_uri(url: str | None, height: int = 96) -> str:
+def thumbnail_uri(url: str | None, height: int = 96, name: str | None = None) -> str:
     """Small JPEG data URI for table thumbnails (never a raw API URL: the browser can't reach the API)."""
     from PIL import Image
 
-    raw = image_bytes(url) or placeholder(72, 96)
+    raw = image_bytes(url) or placeholder(72, 96, initials(name))
     img = Image.open(io.BytesIO(raw)).convert("RGB")
     img.thumbnail((height, height))
     buf = io.BytesIO()
@@ -102,6 +123,21 @@ def thumbnail_uri(url: str | None, height: int = 96) -> str:
 
 def show_image(url: str | None, caption: str | None = None, width: int | str = "stretch") -> None:
     st.image(image_bytes(url) or placeholder(), caption=caption, width=width)
+
+
+def show_product(url: str | None, name: str | None, garment: str | None, caption: str | None = None,
+                 note: str = "short") -> None:
+    """A style's catalogue photo, or an initials placeholder plus why the photo is missing (as a tooltip, or in
+    full with note="full")."""
+    raw = image_bytes(url)
+    if raw:
+        st.image(raw, caption=caption, width="stretch")
+        return
+    st.image(placeholder(300, 400, initials(name), garment or ""), caption=caption, width="stretch")
+    if note == "full":
+        st.caption(f":material/info: {PHOTO_NOTE}")
+    else:
+        st.caption(":material/info: Photo not included", help=PHOTO_NOTE)
 
 
 def api_down(e: Exception) -> None:
@@ -232,7 +268,7 @@ def page_overview(season: str) -> None:
         with col, st.container(border=True):
             img, txt = st.columns([1, 2])
             with img:
-                show_image(s["image_url"])
+                show_product(s["image_url"], s["name"], s["category"]["garment_group"])
             with txt:
                 st.caption(pick_label(s))
                 st.markdown(f"**{s['name']}**")
@@ -306,7 +342,7 @@ def page_top(season: str) -> None:
         with col, st.container(border=True):
             st.caption(pick_label(s), help=HELP["rank"])
             st.subheader(s["name"])
-            show_image(s["image_url"])
+            show_product(s["image_url"], s["name"], s["category"]["garment_group"])
             a, b = st.columns(2)
             a.metric("Prediction score", score(s["prediction_score"]), help=HELP["score"])
             b.metric("Forecast units", num(s["forecast_units"]), help=HELP["units"])
@@ -345,7 +381,8 @@ def page_top(season: str) -> None:
         return
     shown = rows[:st.session_state.get(f"rows_{season}", 50)]
     df = pd.DataFrame([{
-        "Rank": s["forecast_rank"], "Top-3 pick": "✓" if s["rank"] else "", "Photo": thumbnail_uri(s["image_url"]),
+        "Rank": s["forecast_rank"], "Top-3 pick": "✓" if s["rank"] else "",
+        "Photo": thumbnail_uri(s["image_url"], name=s["name"]),
         "Style": s["style_id"], "Name": s["name"], "Prediction score": s["prediction_score"],
         "Chance of top 1%": s["confidence_top1pct"], "Forecast units": round(s["forecast_units"]),
         **({"Actual units": s["actual_units"]} if head["observed"] else {}),
@@ -358,7 +395,9 @@ def page_top(season: str) -> None:
         column_config={
             "Rank": st.column_config.NumberColumn(format="%d", width=55, help=HELP["rank"]),
             "Top-3 pick": st.column_config.TextColumn(width=85, help=HELP["pick"]),
-            "Photo": st.column_config.ImageColumn(width=60),
+            "Photo": st.column_config.ImageColumn(
+                width=60, help=None if all(s["image_url"] for s in shown) else
+                f"Initials where the photo is missing. {PHOTO_NOTE}"),
             "Style": st.column_config.TextColumn(width=70, help="product_code: all colourways of one design"),
             "Name": st.column_config.TextColumn(width=200),
             "Prediction score": st.column_config.ProgressColumn(min_value=0, max_value=1, format="%.2f",
@@ -446,7 +485,7 @@ def page_detail(season: str) -> None:
 
     left, right = st.columns([1, 2])
     with left:
-        show_image(d["image_url"])
+        show_product(d["image_url"], d["name"], d["category"]["garment_group"], note="full")
     with right:
         act = d.get("actual")
         m = st.columns(4)
@@ -493,7 +532,8 @@ def page_detail(season: str) -> None:
             critic_badge(c)
             i1, i2, txt = st.columns([1, 1, 1.4])
             with i1:
-                show_image(c["reference_image_url"], "Reference (best-selling colourway)")
+                show_product(c["reference_image_url"], d["name"], d["category"]["garment_group"],
+                             "Reference (best-selling colourway)")
             with i2:
                 show_image(c["image_url"], "Generated concept")
             with txt:

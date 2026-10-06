@@ -11,7 +11,7 @@ from fastapi import Depends, FastAPI, Path as PathParam, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.model_service import DEFAULT_SEASON, SeasonNotFound, SeasonRegistry, StyleNotFound
@@ -112,6 +112,16 @@ def style_detail(style_id: str = PathParam(description="product_code, with or wi
     (non-)selection, up to 26 weeks of sales, and for the top 3 the generated concept (image, KEEP/CHANGE brief,
     critic status). Observed seasons add the actual units, rank and weekly values in the window."""
     return registry.service(season).detail(style_id)
+
+
+@app.get("/images/board-ref/{style_id}.png", tags=["images"], response_class=Response,
+         summary="A top-3 winner's reference photo, cropped from the committed concept board",
+         responses={200: {"content": {"image/png": {}}}, 404: {"model": ErrorResponse}})
+def board_reference(style_id: str, registry: SeasonRegistry = Depends(get_registry)) -> Response:
+    """Fallback product photo when outputs/refs/ (git-ignored Kaggle photos) is absent, e.g. on the hosted demo.
+    Only the 3 winners shown on the committed board have one."""
+    return Response(registry.service().board_ref_png(style_id), media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/images/{path:path}", tags=["images"], summary="Static images from outputs/",

@@ -1,6 +1,8 @@
 """Backend API (FastAPI TestClient over the committed outputs/predictions.json)."""
 from __future__ import annotations
 
+import io
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -31,7 +33,7 @@ def test_top_list(client: TestClient) -> None:
     assert first["name"] == "Pluto RW slacks" and first["raw_name"] == "Pluto RW slacks (1)"
     assert len(first["sales_history"]["last_8_weeks"]) == 8
     assert first["sales_history"]["units_last_4w"] == 9182
-    assert first["image_url"] is None or first["image_url"].startswith("/images/refs/0751471/")
+    assert first["image_url"].startswith(("/images/refs/0751471/", "/images/board-ref/0751471.png"))
 
 
 @pytest.mark.parametrize("raw, shown", [("Pluto RW slacks (1)", "Pluto RW slacks"), ("Edda top(1)", "Edda top"),
@@ -69,6 +71,42 @@ def test_detail_top3_has_concept(client: TestClient) -> None:
     assert c["image_url"] == "/images/evidence/0685814/concept_2.png"
     assert c["keep"] and c["change"] and "from" in c["change"][0]
     assert c["critic"]["decision"] == "revise" and c["critic"]["status"] == "Critic: not approved"
+
+
+def test_board_reference_photo(client: TestClient) -> None:
+    from PIL import Image
+
+    from backend import model_service as ms
+    from image import board
+    assert (ms.BOARD_MARGIN, ms.BOARD_GUTTER, ms.BOARD_COL_W, ms.BOARD_IMG_W, ms.BOARD_IMG_H) == \
+        (board.MARGIN, board.GUTTER, board.COL_W, board.IMG_W, board.IMG_H)
+    for code in ("0751471", "0762846", "0685814"):
+        r = client.get(f"/images/board-ref/{code}.png")
+        assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+        assert Image.open(io.BytesIO(r.content)).size == (board.IMG_W - 4, board.IMG_H - 4)
+    for bad in ("0706016", "abc"):  # not a board winner / malformed
+        assert client.get(f"/images/board-ref/{bad}.png").status_code == 404
+
+
+def test_photo_fallback_without_refs(tmp_path) -> None:
+    """Hosted demo (no outputs/refs/): winners get the board crop, everyone else a null URL for the placeholder."""
+    import shutil
+
+    from backend.model_service import ModelService
+    shutil.copy(config.OUT_DIR / "generated_concepts.png", tmp_path)
+    shutil.copytree(config.OUT_DIR / "evidence", tmp_path / "evidence")
+    svc = ModelService(config.OUT_DIR / "predictions.json", tmp_path)
+    assert svc.primary_image_url(svc.get("0751471")) == "/images/board-ref/0751471.png"
+    assert svc.detail("0762846")["reference_image_urls"] == ["/images/board-ref/0762846.png"]
+    assert svc.detail("0685814")["concept"]["reference_image_url"] == "/images/board-ref/0685814.png"
+    assert svc.detail("0706016")["image_url"] is None
+
+
+@pytest.mark.skipif(not (config.REFS_DIR / "0751471").is_dir(), reason="catalogue photos not downloaded")
+def test_downloaded_photos_take_priority(client: TestClient) -> None:
+    d = client.get("/styles/0751471").json()
+    assert d["image_url"].startswith("/images/refs/0751471/")
+    assert not any(u.startswith("/images/board-ref/") for u in d["reference_image_urls"])
 
 
 def test_detail_without_concept(client: TestClient) -> None:
