@@ -82,6 +82,19 @@ calibrated probability. Sources: [`eval_table.md`](outputs/figures/eval_table.md
 | Setup instructions | "How to run" below |
 | Bonus: agentic workflow, seasonal view | "Bonus" below |
 
+## Live demo
+
+**Link:** _to be added after the first Streamlit Community Cloud deploy._
+
+The hosted app runs from the committed `outputs/` (no data, no product photos: the app shows placeholders).
+
+- **Streamlit Community Cloud (free, no card):** main file `frontend/streamlit_app_cloud.py`, Python 3.11. That
+  entrypoint starts the FastAPI backend inside the app container on `127.0.0.1:8000` and the frontend still talks to
+  it only over HTTP. Dependencies come from `frontend/requirements.txt` (app + API only). The app sleeps after a few
+  days without visitors; the next visit wakes it in about a minute.
+- **Render (alternative):** `render.yaml` + `deploy/render/Dockerfile` deploy the same app as one Docker web service
+  on the free plan. Render asks for a payment card at sign-up, even for free services.
+
 ## How to run (Codespaces / Linux, Python 3.11)
 
 ```bash
@@ -138,7 +151,9 @@ data_science/            data processing, features, models, evaluation
   train.py  predict.py   training pipeline, prediction files for the API
   model.py classify.py   regressor (+ backtest), winner classifiers + calibration
 backend/                 api.py (HTTP), model_service.py (predictions), schemas.py
-frontend/                app.py (Streamlit), api_client.py; theme in .streamlit/config.toml
+frontend/                app.py (Streamlit), api_client.py, streamlit_app_cloud.py (hosted entrypoint);
+                         theme in .streamlit/config.toml
+deploy/render/ render.yaml   Render Docker deployment (needs a card)
 models/                  LightGBM regressor/classifiers, isotonic calibrators
 outputs/                 generated_concepts.png, predictions*.json, evidence/, figures/, classifier/
 agents/ mcp_servers/ image/ skills_lib/ .claude/skills/   agentic concept workflow (bonus)

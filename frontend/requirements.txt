@@ -1,0 +1,11 @@
+# Streamlit Community Cloud (entrypoint frontend/streamlit_app_cloud.py): the app plus the FastAPI backend it starts.
+# No training or data libraries: the API only reads the committed outputs/*.json and images.
+streamlit
+altair
+pandas
+pillow
+httpx
+fastapi
+pydantic
+uvicorn
+python-dotenv
