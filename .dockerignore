@@ -1,0 +1,13 @@
+# Docker build context for deploy/render/Dockerfile: only app code and committed outputs go in.
+*
+!config.py
+!.streamlit/
+!backend/
+!frontend/
+!outputs/
+!deploy/render/requirements.txt
+**/__pycache__
+outputs/refs/
+outputs/cache/
+outputs/mock_run/
+**/*.parquet

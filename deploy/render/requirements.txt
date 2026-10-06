@@ -1,0 +1,10 @@
+# Runtime-only dependencies for the hosted demo (no model training, torch, or data tooling).
+fastapi
+pydantic
+uvicorn
+httpx
+streamlit
+altair
+pandas
+pillow
+python-dotenv

@@ -1,0 +1,10 @@
+# Render Blueprint: free Docker web service for the Streamlit app (FastAPI runs inside the same container).
+services:
+  - type: web
+    name: merchmix-styles
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    autoDeploy: true
